@@ -2,7 +2,7 @@
 
 **Repo:** `~/agents/agent-system-base` — canonical blueprint for the personal AI execution stack. **Runtime mirror:** `~/agents/agent-services` (via `init.sh`). **Global Claude layer:** `~/.claude`.
 
-> Root `PRD.md` is the full product spec (AS-BUILT vs TARGET). Root `tasks.json` is the **as-built execution plan** for the Claude worker feature — **not** the import queue. Per-project queue for this repo lives in **this file’s sibling** `.claude/tasks.json` (empty until used).
+> Root `PRD.md` is the full product spec (AS-BUILT vs TARGET). The archived **as-built execution plan** for the Claude worker feature lives at **`docs/plans/execution-plan-claude-worker.json`** (workspace root) — **not** the import queue. Per-project queue for this repo lives in **this file’s sibling** `.claude/tasks.json` (empty until used).
 
 ---
 

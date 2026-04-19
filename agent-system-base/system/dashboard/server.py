@@ -24,6 +24,7 @@ import approval_service  # noqa: E402
 import auxiliary_agent_output_service  # noqa: E402
 import backlog_service  # noqa: E402
 import blueprint_service  # noqa: E402
+import db  # noqa: E402
 import decision_service  # noqa: E402
 import memory_service  # noqa: E402
 import project_service  # noqa: E402
@@ -31,13 +32,12 @@ import proposed_action_service  # noqa: E402
 import run_service  # noqa: E402
 import session_log_service  # noqa: E402
 import task_service  # noqa: E402
+import uvicorn  # noqa: E402
 import validation_service  # noqa: E402
-
-import uvicorn
-from fastapi import Body, FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
+from fastapi import Body, FastAPI, HTTPException  # noqa: E402
+from fastapi.responses import HTMLResponse, JSONResponse  # noqa: E402
+from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
+from starlette.requests import Request  # noqa: E402
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 LOG_DIR = Path(os.environ.get("LOG_DIR", str(Path.home() / "agents" / "agent-services" / "logs")))

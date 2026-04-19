@@ -15,6 +15,8 @@ Claude Code reads this file in every session opened inside this directory.
 
 `init.sh` syncs blueprints → global state + runtime. Run it after any change to skills, agents, orchestrator, or workers.
 
+**Monorepo map (domain / application / infrastructure):** see [`docs/architecture.md`](../docs/architecture.md) at the workspace root. **Historical system audits:** [`docs/audits/`](../docs/audits/).
+
 ---
 
 ## Task Schema

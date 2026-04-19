@@ -1,6 +1,10 @@
 # ── Runtime (generated from agent-system-base via init.sh) ─────────────────
 agent-services/
 
+# ── Optional: init.sh with TARGET=repo root (orchestrator runs) ─────────────
+/.claude/
+/runs/
+
 # ── Workspace junk ─────────────────────────────────────────────────────────
 .DS_Store
 node_modules/

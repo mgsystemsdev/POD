@@ -31,18 +31,22 @@ Layout written (identical to ``agents init`` scaffold):
       ├── ui_spec.md                      → UI Spec
       └── senior_dev.md                   → Senior Dev
 
-Pull is **silent overwrite** (Option A). Anything you typed locally and did
-not push to Railway will be replaced. Edit via the dashboard / ChatGPT /
-API — not by hand.
+Pull is **silent overwrite** (Option A) unless ``--dry-run``. On success writes
+``.claude/sync_state.json`` (``last_pull_at``, ``last_pull_ok``, ``pull_errors``).
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
 
 try:
     import requests
@@ -50,6 +54,7 @@ except ImportError:
     print("error: `requests` not installed. pip install requests", file=sys.stderr)
     sys.exit(1)
 
+import agents_cli_config as acfg
 
 # ── Tab → filename registry (single source of truth for this script) ──────────
 
@@ -66,33 +71,6 @@ SPECIALIST_ROLES = [
 READONLY_TABS = {"execution_trace", "approvals", "audit_trail"}
 
 
-# ── Config ────────────────────────────────────────────────────────────────────
-
-
-def _load_config() -> dict[str, Any]:
-    path = Path(".claude/config.json")
-    if not path.exists():
-        print(
-            "error: .claude/config.json not found. Run `agents init` first, then fill in project_id + api_url + api_key.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    try:
-        cfg = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as e:
-        print(f"error: .claude/config.json is not valid JSON: {e}", file=sys.stderr)
-        sys.exit(1)
-    missing = [k for k in ("project_id", "api_url") if not cfg.get(k)]
-    if missing:
-        print(
-            f"error: .claude/config.json is missing required keys: {missing}. "
-            "Set project_id (from `agents add`) and api_url (e.g. https://your-app.up.railway.app).",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    return cfg
-
-
 # ── HTTP ──────────────────────────────────────────────────────────────────────
 
 
@@ -102,6 +80,18 @@ def _get(url: str, headers: dict[str, str]) -> Any:
         return None
     r.raise_for_status()
     return r.json()
+
+
+def _fetch_probe(
+    api_url: str, endpoint: str, headers: dict[str, str], label: str
+) -> tuple[Any | None, str | None]:
+    """Return (json_or_none, error_message)."""
+    url = f"{api_url}{endpoint}"
+    try:
+        data = _get(url, headers)
+        return data, None
+    except requests.RequestException as e:
+        return None, f"{label}: {e}"
 
 
 # ── Formatting helpers ────────────────────────────────────────────────────────
@@ -243,11 +233,16 @@ def render_approvals(rows: list[dict]) -> str:
 
 
 def render_backlog(rows: list[dict]) -> str:
+    # Sentinel row holds full ``governance/backlog.md`` from ``agents push``; show separately.
+    cli_mirror_title = "__agents_cli_backlog_mirror__"
+    mirror = next((r for r in rows if (r.get("title") or "") == cli_mirror_title), None)
+    display = [r for r in rows if (r.get("title") or "") != cli_mirror_title]
+
     body = _header("Backlog")
-    if not rows:
+    if not display and not mirror:
         return body + _empty_body("backlog items")
     parts = [body]
-    for r in rows:
+    for r in display:
         status = r.get("status") or "backlog"
         parts.append(
             f"## {r.get('title') or '(untitled)'}  _[#{r.get('id')} · {status}]_\n"
@@ -258,6 +253,9 @@ def render_backlog(rows: list[dict]) -> str:
         if desc:
             parts.append(desc + "\n\n")
         parts.append("---\n\n")
+    if mirror and (mirror.get("description") or "").strip():
+        parts.append("## CLI backlog mirror (agents push)\n\n")
+        parts.append((mirror.get("description") or "").strip() + "\n\n")
     return "".join(parts)
 
 
@@ -309,72 +307,130 @@ def _write(path: Path, content: str) -> None:
     print(f"  ✓ {path}")
 
 
-def _fetch_or_fail(
-    api_url: str, endpoint: str, headers: dict[str, str], label: str
-) -> Any | None:
+def _payload_size(data: Any) -> int:
     try:
-        return _get(f"{api_url}{endpoint}", headers)
-    except requests.RequestException as e:
-        print(f"  ✗ {label}: {e}")
-        return None
+        return len(json.dumps(data, ensure_ascii=False))
+    except (TypeError, ValueError):
+        return 0
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
-
-
-def sync() -> int:
-    cfg = _load_config()
-    project_id = cfg["project_id"]
-    api_url = cfg["api_url"].rstrip("/")
-    api_key = cfg.get("api_key")
-    headers = {"X-API-Key": api_key} if api_key else {}
+def _sync_impl(*, dry_run: bool) -> int:
+    cwd = Path.cwd()
+    cfg = acfg.load_config_file(cwd=cwd)
+    project_id = acfg.require_project_id(cfg)
+    api_url = acfg.resolve_api_url(cfg, cwd=cwd)
+    headers = acfg.api_headers(cfg)
 
     root = Path(".claude")
     pipeline = root / "pipeline"
     governance = root / "governance"
     specialists = root / "specialists"
 
-    print(f"agents pull  ·  project_id={project_id}  ·  {api_url}")
+    mode = "dry-run" if dry_run else "write"
+    print(f"agents pull ({mode})  ·  project_id={project_id}  ·  {api_url}")
 
-    # Pipeline
-    tasks = _fetch_or_fail(api_url, f"/api/tasks?project_id={project_id}", headers, "tasks") or []
-    _write(pipeline / "tasks.json", json.dumps(tasks, indent=2, ensure_ascii=False) + "\n")
+    errors: list[str] = []
+    pulls_ok = True
+
+    def fetch(label: str, endpoint: str) -> Any | None:
+        nonlocal pulls_ok
+        data, err = _fetch_probe(api_url, endpoint, headers, label)
+        if err:
+            errors.append(err)
+            pulls_ok = False
+            print(f"  ✗ {err}")
+            return None
+        return data
+
+    # Pipeline: tasks
+    tasks_ep = f"/api/tasks?project_id={project_id}"
+    tasks = fetch("tasks", tasks_ep) or []
+    t_path = pipeline / "tasks.json"
+    t_body = json.dumps(tasks, indent=2, ensure_ascii=False) + "\n"
+    if dry_run:
+        print(f"  [dry-run] {t_path}  ←  tasks  (~{_payload_size(tasks)} bytes)")
+    else:
+        _write(t_path, t_body)
 
     for key, endpoint, renderer, label in [
         ("blueprints", f"/api/projects/{project_id}/blueprints", render_blueprints, "blueprints"),
         ("session_log", f"/api/projects/{project_id}/session-logs", render_session_log, "session_log"),
         ("execution_trace", f"/api/projects/{project_id}/execution-trace", render_execution_trace, "execution_trace"),
     ]:
-        rows = _fetch_or_fail(api_url, endpoint, headers, label) or []
-        _write(pipeline / f"{key}.md", renderer(rows))
+        rows = fetch(label, endpoint) or []
+        body = renderer(rows)
+        out_path = pipeline / f"{key}.md"
+        if dry_run:
+            print(f"  [dry-run] {out_path}  ←  {label}  (~{len(body.encode('utf-8'))} bytes)")
+        else:
+            _write(out_path, body)
 
-    # Governance
     for key, endpoint, renderer, label in [
         ("decisions", f"/api/projects/{project_id}/decisions", render_decisions, "decisions"),
         ("memory", f"/api/projects/{project_id}/memory", render_memory, "memory"),
         ("approvals", f"/api/projects/{project_id}/approvals", render_approvals, "approvals"),
         ("backlog", f"/api/projects/{project_id}/backlog", render_backlog, "backlog"),
     ]:
-        rows = _fetch_or_fail(api_url, endpoint, headers, label) or []
-        _write(governance / f"{key}.md", renderer(rows))
+        rows = fetch(label, endpoint) or []
+        body = renderer(rows)
+        out_path = governance / f"{key}.md"
+        if dry_run:
+            print(f"  [dry-run] {out_path}  ←  {label}  (~{len(body.encode('utf-8'))} bytes)")
+        else:
+            _write(out_path, body)
 
-    # Audit trail: no endpoint yet — always write a stub noting that
-    _write(governance / "audit_trail.md", render_audit_trail(None))
+    audit_body = render_audit_trail(None)
+    audit_path = governance / "audit_trail.md"
+    if dry_run:
+        print(f"  [dry-run] {audit_path}  ←  audit_trail (stub)")
+    else:
+        _write(audit_path, audit_body)
 
-    # Specialists: single endpoint, filter by role client-side
     all_aux = (
-        _fetch_or_fail(
-            api_url, f"/api/auxiliary-agent-outputs?project_id={project_id}", headers, "specialists"
-        )
-        or []
+        fetch("specialists", f"/api/auxiliary-agent-outputs?project_id={project_id}") or []
     )
     for role in SPECIALIST_ROLES:
         rows = [r for r in all_aux if r.get("agent_role") == role]
-        _write(specialists / f"{role}.md", render_specialist(role, rows))
+        body = render_specialist(role, rows)
+        out_path = specialists / f"{role}.md"
+        if dry_run:
+            print(f"  [dry-run] {out_path}  ←  specialist:{role}  (~{len(body.encode('utf-8'))} bytes)")
+        else:
+            _write(out_path, body)
 
+    stamp = _now_iso()
+
+    if not dry_run:
+        acfg.write_sync_state(
+            {
+                "last_pull_at": stamp,
+                "last_pull_ok": pulls_ok and not errors,
+                "pull_errors": errors,
+                "api_url": api_url,
+                "project_id": project_id,
+            },
+            cwd=cwd,
+        )
+    else:
+        print("\n(dry-run: no files written, sync_state.json unchanged)")
+
+    if errors and not dry_run:
+        print(f"\ncompleted with {len(errors)} error(s); see .claude/sync_state.json")
+        return 1
     print("done.")
     return 0
 
 
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Railway → local .claude/ cache")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Fetch and print targets; do not write files or sync_state.json",
+    )
+    args = parser.parse_args()
+    return _sync_impl(dry_run=args.dry_run)
+
+
 if __name__ == "__main__":
-    raise SystemExit(sync())
+    raise SystemExit(main())
