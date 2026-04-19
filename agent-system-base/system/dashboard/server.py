@@ -79,7 +79,7 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
 
         expected = os.environ.get("AGENTS_API_KEY", "").strip()
         if not expected:
-            return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+            return await call_next(request)
 
         supplied = request.headers.get("X-API-Key", "").strip()
         if not supplied or not hmac.compare_digest(
