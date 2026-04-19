@@ -147,6 +147,44 @@ async def update_project(project_id: int, body: dict = Body(...)) -> dict:
     return row
 
 
+@app.get("/api/projects/{project_id}")
+async def read_project(project_id: int) -> dict:
+    row = project_service.get_project(project_id)
+    if row is None:
+        raise HTTPException(404, "Project not found")
+    return row
+
+
+@app.patch("/api/projects/{project_id}")
+async def patch_project(project_id: int, body: dict = Body(...)) -> dict:
+    slug = body.get("slug")
+    if slug is None or not str(slug).strip():
+        raise HTTPException(400, "slug is required")
+    slug_s = str(slug).strip()
+    try:
+        return project_service.rename_project_slug(project_id, slug_s)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except project_service.ProjectSlugConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.delete("/api/projects/{project_id}")
+async def remove_project(project_id: int) -> Response:
+    try:
+        ok = project_service.delete_project(project_id)
+    except project_service.ProjectDeleteBlockedError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": str(exc), "counts": exc.counts},
+        ) from exc
+    if not ok:
+        raise HTTPException(404, "Project not found")
+    return Response(status_code=204)
+
+
 # ── Tasks ─────────────────────────────────────────────────────────────────────
 
 

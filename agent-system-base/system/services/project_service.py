@@ -21,6 +21,18 @@ class ProjectSlugConflictError(ValueError):
     pass
 
 
+class ProjectDeleteBlockedError(Exception):
+    """Raised when ``delete_project`` cannot run because child rows exist."""
+
+    def __init__(self, counts: dict[str, int]):
+        self.counts = {k: v for k, v in counts.items() if v > 0}
+        parts = [f"{k}: {v}" for k, v in sorted(self.counts.items())]
+        msg = "Cannot delete project while related data exists: " + (
+            "; ".join(parts) if parts else "related data exists"
+        )
+        super().__init__(msg)
+
+
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
 
 
@@ -166,6 +178,101 @@ def update_project(
         conn.commit()
         row = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
         return _row_to_project(row) if row else None
+
+
+def _safe_count(conn: Any, sql: str, project_id: int) -> int:
+    """Return COUNT or 0 if the table does not exist (migration not applied)."""
+    try:
+        row = conn.execute(sql, (project_id,)).fetchone()
+        if row is None:
+            return 0
+        return int(row[0])
+    except Exception as exc:
+        msg = str(exc).lower()
+        if "no such table" in msg or "does not exist" in msg:
+            return 0
+        raise
+
+
+_CHILD_COUNT_SQL: list[tuple[str, str]] = [
+    ("tasks", "SELECT COUNT(*) FROM tasks WHERE project_id = ?"),
+    ("blueprints", "SELECT COUNT(*) FROM blueprints WHERE project_id = ?"),
+    ("session_logs", "SELECT COUNT(*) FROM session_logs WHERE project_id = ?"),
+    ("memory", "SELECT COUNT(*) FROM memory WHERE project_id = ?"),
+    ("decisions", "SELECT COUNT(*) FROM decisions WHERE project_id = ?"),
+    (
+        "auxiliary_agent_outputs",
+        "SELECT COUNT(*) FROM auxiliary_agent_outputs WHERE project_id = ?",
+    ),
+    (
+        "proposed_actions",
+        "SELECT COUNT(*) FROM proposed_actions WHERE project_id = ?",
+    ),
+    ("backlog", "SELECT COUNT(*) FROM backlog WHERE project_id = ?"),
+    ("approvals", "SELECT COUNT(*) FROM approvals WHERE project_id = ?"),
+    ("validations", "SELECT COUNT(*) FROM validations WHERE project_id = ?"),
+    ("security_findings", "SELECT COUNT(*) FROM security_findings WHERE project_id = ?"),
+    ("db_recommendations", "SELECT COUNT(*) FROM db_recommendations WHERE project_id = ?"),
+    (
+        "adversarial_critiques",
+        "SELECT COUNT(*) FROM adversarial_critiques WHERE project_id = ?",
+    ),
+]
+
+
+def project_child_counts(project_id: int) -> dict[str, int]:
+    """Count rows referencing ``project_id`` in known dependent tables."""
+    out: dict[str, int] = {}
+    with db.connect() as conn:
+        for label, sql in _CHILD_COUNT_SQL:
+            out[label] = _safe_count(conn, sql, project_id)
+    return out
+
+
+def rename_project_slug(project_id: int, new_slug: str) -> dict[str, Any]:
+    """Change ``slug`` for an existing project; must stay unique."""
+    existing = get_project(project_id)
+    if existing is None:
+        raise LookupError("project not found")
+    _validate_slug(new_slug)
+    if existing["slug"] == new_slug:
+        return existing
+    other = get_project_by_slug(new_slug)
+    if other is not None and other["id"] != project_id:
+        raise ProjectSlugConflictError("A project with this slug already exists")
+    now = _iso_now()
+    with db.connect() as conn:
+        try:
+            conn.execute(
+                "UPDATE projects SET slug = ?, updated_at = ? WHERE id = ?",
+                (new_slug, now, project_id),
+            )
+            conn.commit()
+        except _IntegrityErrors as exc:
+            if "slug" in str(exc).lower():
+                raise ProjectSlugConflictError(
+                    "A project with this slug already exists"
+                ) from exc
+            raise
+        row = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+        assert row is not None
+        return _row_to_project(row)
+
+
+def delete_project(project_id: int) -> bool:
+    """Delete a project if it has no dependent rows. Returns False if project missing."""
+    if get_project(project_id) is None:
+        return False
+    with db.connect() as conn:
+        counts: dict[str, int] = {}
+        for label, sql in _CHILD_COUNT_SQL:
+            counts[label] = _safe_count(conn, sql, project_id)
+        blocked = {k: v for k, v in counts.items() if v > 0}
+        if blocked:
+            raise ProjectDeleteBlockedError(blocked)
+        conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+        conn.commit()
+    return True
 
 
 def set_project_root(project_id: int, root_path: str | None) -> dict[str, Any] | None:

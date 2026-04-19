@@ -275,7 +275,16 @@
   /* ── Modal ── */
   .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
   .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 14px; width: 100%; max-width: 520px; padding: 28px; }
+  .modal.modal-wide { max-width: 720px; }
   .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 22px; }
+  .admin-proj-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 8px; }
+  .admin-proj-table th,
+  .admin-proj-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+  .admin-proj-table th { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .6px; font-weight: 700; }
+  .admin-proj-table tr:last-child td { border-bottom: none; }
+  .admin-proj-table code { font-size: 11px; }
+  .proj-admin-actions { white-space: nowrap; }
+  .sidebar-admin-body .btn { width: 100%; justify-content: center; }
   .field       { margin-bottom: 16px; }
   .field label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
   .field input,
@@ -333,7 +342,9 @@
     <nav class="project-nav" id="projectNav"></nav>
     <div class="sidebar-admin" aria-label="Admin">
       <div class="sidebar-section-label">Admin</div>
-      <div class="sidebar-admin-body" id="sidebarAdmin"></div>
+      <div class="sidebar-admin-body" id="sidebarAdmin">
+        <button type="button" class="btn btn-sm" onclick="openProjectAdmin()">Projects…</button>
+      </div>
     </div>
   </aside>
 
@@ -657,6 +668,65 @@
   </div>
 </div>
 
+<!-- Project admin modal -->
+<div class="modal-backdrop hidden" id="projectAdminBackdrop" onclick="onProjectAdminBackdropClick(event)" style="z-index:110">
+  <div class="modal modal-wide" onclick="event.stopPropagation()">
+    <h2>Projects</h2>
+    <div id="projectAdminTableWrap" style="max-height:42vh; overflow:auto; margin-bottom:14px;"></div>
+
+    <div id="projectAdminCreateForm" class="hidden">
+      <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text);">New project</h3>
+      <div class="field">
+        <label>Name *</label>
+        <input type="text" id="pa-new-name" placeholder="Display name" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Slug *</label>
+        <input type="text" id="pa-new-slug" placeholder="e.g. my-repo" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Root path</label>
+        <input type="text" id="pa-new-root" placeholder="Optional absolute path" autocomplete="off">
+      </div>
+      <div class="modal-footer" style="margin-top:12px;">
+        <button type="button" class="btn btn-ghost" onclick="hideProjectAdminForms()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveNewProject()">Create</button>
+      </div>
+    </div>
+
+    <div id="projectAdminEditForm" class="hidden">
+      <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text);">Edit project</h3>
+      <input type="hidden" id="pa-edit-id">
+      <input type="hidden" id="pa-edit-orig-slug">
+      <div class="field">
+        <label>Name *</label>
+        <input type="text" id="pa-edit-name" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Root path</label>
+        <input type="text" id="pa-edit-root" placeholder="Optional" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Slug</label>
+        <input type="text" id="pa-edit-slug" autocomplete="off">
+        <label style="margin-top:10px;display:flex;align-items:center;gap:8px;font-weight:500;text-transform:none;letter-spacing:0;cursor:pointer;">
+          <input type="checkbox" id="pa-edit-slug-confirm" style="width:auto;">
+          Confirm slug change
+        </label>
+      </div>
+      <div class="modal-footer" style="margin-top:12px;">
+        <button type="button" class="btn btn-ghost" onclick="hideProjectAdminForms()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveEditProject()">Save</button>
+      </div>
+    </div>
+
+    <div class="modal-footer" id="projectAdminFooter">
+      <button type="button" class="btn btn-ghost" onclick="closeProjectAdmin()">Close</button>
+      <button type="button" class="btn btn-primary" onclick="showProjectAdminCreate()">+ New project</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── State ─────────────────────────────────────────────────────────────────────
 let allTasks      = [];
@@ -724,9 +794,163 @@ async function api(method, path, body) {
     opts.body = JSON.stringify(body);
   }
   const r = await fetch('/api' + path, opts);
-  if (!r.ok) throw new Error(await r.text());
+  if (!r.ok) {
+    const raw = await r.text();
+    let msg = raw;
+    try {
+      const j = JSON.parse(raw);
+      if (j && j.detail != null) {
+        msg = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail);
+      }
+    } catch (_) { /* keep msg */ }
+    throw new Error(msg);
+  }
   if (r.status === 204) return null;
+  const ct = r.headers.get('content-type') || '';
+  if (ct.indexOf('application/json') === -1) return null;
   return r.json();
+}
+
+const PROJECT_SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,62}$/;
+function validateProjectSlug(slug) {
+  if (!slug) return 'Slug is required';
+  if (slug !== slug.trim()) return 'Slug must not have surrounding whitespace';
+  if (slug !== slug.toLowerCase()) return 'Slug must be lowercase';
+  if (!PROJECT_SLUG_RE.test(slug)) {
+    return 'Slug must match ^[a-z0-9][a-z0-9_-]{0,62}$ (lowercase letters, digits, _ and -)';
+  }
+  return null;
+}
+
+function taskCountForProject(pid) {
+  return allTasks.filter(t => t.project_id === pid).length;
+}
+
+function hideProjectAdminForms() {
+  document.getElementById('projectAdminCreateForm').classList.add('hidden');
+  document.getElementById('projectAdminEditForm').classList.add('hidden');
+  document.getElementById('projectAdminFooter').classList.remove('hidden');
+  const c = document.getElementById('pa-edit-slug-confirm');
+  if (c) c.checked = false;
+}
+
+function showProjectAdminCreate() {
+  document.getElementById('projectAdminEditForm').classList.add('hidden');
+  document.getElementById('pa-new-name').value = '';
+  document.getElementById('pa-new-slug').value = '';
+  document.getElementById('pa-new-root').value = '';
+  document.getElementById('projectAdminCreateForm').classList.remove('hidden');
+  document.getElementById('projectAdminFooter').classList.add('hidden');
+}
+
+function showProjectAdminEdit(id) {
+  const p = allProjects.find(x => Number(x.id) === Number(id));
+  if (!p) return;
+  document.getElementById('projectAdminCreateForm').classList.add('hidden');
+  document.getElementById('pa-edit-id').value = String(p.id);
+  document.getElementById('pa-edit-name').value = p.name || '';
+  document.getElementById('pa-edit-root').value = p.root_path || '';
+  document.getElementById('pa-edit-slug').value = p.slug || '';
+  document.getElementById('pa-edit-orig-slug').value = p.slug || '';
+  document.getElementById('pa-edit-slug-confirm').checked = false;
+  document.getElementById('projectAdminEditForm').classList.remove('hidden');
+  document.getElementById('projectAdminFooter').classList.add('hidden');
+}
+
+function renderProjectAdminTable() {
+  const wrap = document.getElementById('projectAdminTableWrap');
+  const rows = allProjects.slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  let html = '<table class="admin-proj-table"><thead><tr><th>Name</th><th>Slug</th><th>Root path</th><th>Tasks</th><th class="proj-admin-actions">Actions</th></tr></thead><tbody>';
+  if (!rows.length) {
+    html += '<tr><td colspan="5" style="color:var(--muted);padding:14px;">No projects yet.</td></tr>';
+  } else {
+    rows.forEach(p => {
+      const cnt = taskCountForProject(p.id);
+      const root = p.root_path ? esc(p.root_path) : '<span style="color:var(--muted)">—</span>';
+      const titleAttr = p.root_path ? esc(p.root_path) : '';
+      html += '<tr><td>' + esc(p.name) + '</td><td><code>' + esc(p.slug) + '</code></td>' +
+        '<td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis" title="' + titleAttr + '">' + root + '</td>' +
+        '<td>' + cnt + '</td><td class="proj-admin-actions">' +
+        '<button type="button" class="btn btn-sm" onclick="showProjectAdminEdit(' + p.id + ')">Edit</button> ' +
+        '<button type="button" class="btn btn-sm btn-del" onclick="paDeleteProject(' + p.id + ')">Delete</button>' +
+        '</td></tr>';
+    });
+  }
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+function openProjectAdmin() {
+  hideProjectAdminForms();
+  document.getElementById('projectAdminBackdrop').classList.remove('hidden');
+  renderProjectAdminTable();
+}
+
+function closeProjectAdmin() {
+  document.getElementById('projectAdminBackdrop').classList.add('hidden');
+  hideProjectAdminForms();
+}
+
+function onProjectAdminBackdropClick(e) {
+  if (e.target.id === 'projectAdminBackdrop') closeProjectAdmin();
+}
+
+async function saveNewProject() {
+  const name = document.getElementById('pa-new-name').value.trim();
+  let slug = document.getElementById('pa-new-slug').value.trim().toLowerCase();
+  const root = document.getElementById('pa-new-root').value.trim();
+  if (!name || !slug) { toast('Name and slug are required', 'err'); return; }
+  const sv = validateProjectSlug(slug);
+  if (sv) { toast(sv, 'err'); return; }
+  try {
+    await api('POST', '/projects', { name, slug, root_path: root || null });
+    toast('Project created');
+    hideProjectAdminForms();
+    await loadTasks();
+    renderProjectAdminTable();
+  } catch (e) {
+    toast('Error: ' + e.message, 'err');
+  }
+}
+
+async function saveEditProject() {
+  const id = document.getElementById('pa-edit-id').value;
+  const name = document.getElementById('pa-edit-name').value.trim();
+  const root = document.getElementById('pa-edit-root').value.trim();
+  let newSlug = document.getElementById('pa-edit-slug').value.trim().toLowerCase();
+  const origSlug = document.getElementById('pa-edit-orig-slug').value;
+  if (!id || !name) { toast('Name is required', 'err'); return; }
+  const sv = validateProjectSlug(newSlug);
+  if (sv) { toast(sv, 'err'); return; }
+  if (newSlug !== origSlug && !document.getElementById('pa-edit-slug-confirm').checked) {
+    toast('Confirm slug change to rename slug.', 'err');
+    return;
+  }
+  try {
+    await api('PUT', '/projects/' + id, { name, root_path: root || null });
+    if (newSlug !== origSlug) {
+      await api('PATCH', '/projects/' + id, { slug: newSlug });
+    }
+    toast('Project updated');
+    hideProjectAdminForms();
+    await loadTasks();
+    renderProjectAdminTable();
+  } catch (e) {
+    toast('Error: ' + e.message, 'err');
+  }
+}
+
+async function paDeleteProject(id) {
+  if (!confirm('Delete this project? This cannot be undone.')) return;
+  try {
+    await api('DELETE', '/projects/' + id);
+    if (projectFilter === id || String(projectFilter) === String(id)) setProjectFilter('all');
+    toast('Project deleted');
+    await loadTasks();
+    renderProjectAdminTable();
+  } catch (e) {
+    toast('Error: ' + e.message, 'err');
+  }
 }
 
 // ── Project helpers ───────────────────────────────────────────────────────────
