@@ -3,24 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Task Dashboard</title>
+<title>mG-POD Command Center</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg:        #0f1117;
-    --surface:   #1a1d27;
-    --border:    #2a2d3a;
+    --bg:        #0f0f0f;
+    --bg2:       #141414;
+    --surface:   #1a1a1a;
+    --surface2:  #202020;
+    --border:    #2a2a2a;
+    --border2:   #333;
     --text:      #e2e8f0;
-    --muted:     #718096;
-    --accent:    #6366f1;
+    --muted:     #6b7280;
+    --accent:    #5865f2;
     --accent-h:  #818cf8;
+
+    /* Pipeline tab color */
+    --pipeline:    #5865f2;
+    --pipeline-bg: rgba(88,101,242,.12);
+    --pipeline-bd: rgba(88,101,242,.35);
+    /* Governance tab color */
+    --gov:    #faa61a;
+    --gov-bg: rgba(250,166,26,.1);
+    --gov-bd: rgba(250,166,26,.35);
+    /* Auxiliary tab color */
+    --aux:    #ed4245;
+    --aux-bg: rgba(237,66,69,.1);
+    --aux-bd: rgba(237,66,69,.35);
 
     --p1: #ef4444; --p1-bg: #2d1515;
     --p2: #f97316; --p2-bg: #2d1e10;
     --p3: #eab308; --p3-bg: #2a2008;
     --p4: #3b82f6; --p4-bg: #101e35;
-    --p5: #6b7280; --p5-bg: #1a1d27;
+    --p5: #6b7280; --p5-bg: #1a1a1a;
 
     --s-pending:     #6366f1; --s-pending-bg:     #1a1b35;
     --s-in_progress: #f59e0b; --s-in_progress-bg: #2a2008;
@@ -34,82 +50,140 @@
   /* ── Shell + sidebar ── */
   .shell { display: flex; min-height: 100vh; align-items: stretch; }
   .sidebar {
-    width: 248px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border);
-    padding: 20px 0 24px; display: flex; flex-direction: column; gap: 4px;
+    width: 240px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border);
+    padding: 0; display: flex; flex-direction: column;
   }
-  .sidebar-brand { padding: 0 18px 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
-  .sidebar-brand h2 { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; color: var(--text); }
-  .sidebar-brand p { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.35; }
+  .sidebar-brand {
+    padding: 18px 18px 14px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .brand-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex-shrink: 0;
+    box-shadow: 0 0 0 0 rgba(34,197,94,.5);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%,100% { box-shadow: 0 0 0 0 rgba(34,197,94,.5); }
+    50%      { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
+  }
+  .brand-text h2 { font-size: 13px; font-weight: 700; letter-spacing: .3px; color: var(--text); line-height: 1.2; }
+  .brand-text p  { font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: .4px; text-transform: uppercase; }
+
   .sidebar-section-label {
-    padding: 8px 18px 6px; font-size: 11px; font-weight: 600; text-transform: uppercase;
-    letter-spacing: .75px; color: var(--muted);
+    padding: 12px 18px 6px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .8px; color: var(--muted);
   }
-  .project-nav { display: flex; flex-direction: column; gap: 2px; padding: 0 10px; }
+  .project-nav { display: flex; flex-direction: column; gap: 2px; padding: 0 8px 12px; flex: 1; overflow-y: auto; }
   .nav-row {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background .12s, border-color .12s;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 8px 10px; border-radius: 7px; cursor: pointer; transition: background .12s, border-color .12s;
     border: 1px solid transparent; text-align: left; width: 100%; background: transparent;
     color: var(--text); font: inherit;
   }
   .nav-row:hover { background: rgba(255,255,255,.04); border-color: var(--border); }
-  .nav-row.active { background: rgba(99,102,241,.12); border-color: rgba(99,102,241,.35); }
+  .nav-row.active { background: var(--pipeline-bg); border-color: var(--pipeline-bd); }
   .nav-row.active .nav-name { color: var(--accent-h); font-weight: 600; }
-  .nav-name { font-size: 13px; font-weight: 500; line-height: 1.3; flex: 1; min-width: 0; }
-  .nav-count { font-size: 13px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .nav-name { font-size: 12px; font-weight: 500; line-height: 1.3; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav-count { font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
   .nav-row.active .nav-count { color: var(--accent-h); }
 
-  .main { flex: 1; min-width: 0; overflow-x: auto; }
-  .main-inner { max-width: 1200px; margin: 0 auto; padding: 24px 20px 40px; }
-  .header  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
-  .header-right { display: flex; align-items: center; gap: 10px; }
-  .refresh-label { color: var(--muted); font-size: 12px; }
+  .main { flex: 1; min-width: 0; overflow-x: auto; display: flex; flex-direction: column; }
+  .main-inner { max-width: 1300px; width: 100%; margin: 0 auto; padding: 20px 20px 40px; }
+
+  /* ── Header ── */
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; gap: 12px; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-left h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .status-indicator { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(34,197,94,.25); background: rgba(34,197,94,.06); font-size: 11px; color: #4ade80; font-weight: 600; letter-spacing: .3px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; animation: pulse-dot 2s ease-in-out infinite; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .refresh-label { color: var(--muted); font-size: 11px; }
 
   @media (max-width: 900px) {
     .shell { flex-direction: column; }
-    .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-    .project-nav { flex-direction: row; flex-wrap: wrap; }
-    .nav-row { width: auto; flex: 1 1 auto; min-width: 140px; }
+    .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+    .project-nav { flex-direction: row; flex-wrap: wrap; padding: 0 8px 8px; }
+    .nav-row { width: auto; flex: 1 1 auto; min-width: 120px; }
   }
 
   /* ── Context Banner ── */
-  .context-banner { display: flex; align-items: center; justify-content: space-between; background: rgba(99,102,241,.08); border: 1px solid rgba(99,102,241,.22); border-radius: 10px; padding: 10px 16px; margin-bottom: 14px; gap: 12px; }
-  .context-left { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  .context-name { font-size: 13px; font-weight: 700; color: var(--accent-h); letter-spacing: .5px; text-transform: uppercase; }
-  .context-meta { display: flex; gap: 14px; flex-wrap: wrap; }
-  .context-chip { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+  .context-banner { display: flex; align-items: center; justify-content: space-between; background: var(--pipeline-bg); border: 1px solid var(--pipeline-bd); border-radius: 10px; padding: 8px 14px; margin-bottom: 14px; gap: 12px; }
+  .context-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .context-name { font-size: 12px; font-weight: 700; color: var(--accent-h); letter-spacing: .6px; text-transform: uppercase; }
+  .context-meta { display: flex; gap: 12px; flex-wrap: wrap; }
+  .context-chip { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
   .context-chip b.c-pending     { color: var(--s-pending); }
   .context-chip b.c-in_progress { color: var(--s-in_progress); }
   .context-chip b.c-done        { color: var(--s-complete); }
   .context-chip b.c-complete    { color: var(--s-complete); }
   .context-chip b.c-blocked     { color: var(--s-blocked); }
   .context-chip b.c-failed      { color: var(--s-failed); }
-  .context-clear { background: transparent; border: 1px solid rgba(99,102,241,.25); border-radius: 6px; color: var(--muted); cursor: pointer; padding: 4px 10px; font-size: 12px; transition: all .15s; white-space: nowrap; flex-shrink: 0; }
+  .context-clear { background: transparent; border: 1px solid var(--pipeline-bd); border-radius: 6px; color: var(--muted); cursor: pointer; padding: 3px 9px; font-size: 11px; transition: all .15s; white-space: nowrap; flex-shrink: 0; }
   .context-clear:hover { border-color: var(--accent); color: var(--text); }
 
-  /* ── Stats ── */
-  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 16px; }
-  .stat  { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; cursor: pointer; transition: border-color .15s; }
-  .stat:hover { border-color: var(--accent); }
+  /* ── Metric Cards ── */
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 16px; }
+  .stat  { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer; transition: border-color .15s; }
+  .stat:hover { border-color: var(--border2); }
   .stat.active { border-color: var(--accent); }
-  .stat-val  { font-size: 26px; font-weight: 700; line-height: 1; }
-  .stat-lbl  { color: var(--muted); font-size: 11px; margin-top: 4px; text-transform: uppercase; letter-spacing: .6px; }
+  .stat-val  { font-size: 28px; font-weight: 800; line-height: 1; letter-spacing: -1px; }
+  .stat-lbl  { color: var(--muted); font-size: 10px; margin-top: 5px; text-transform: uppercase; letter-spacing: .8px; font-weight: 600; }
   .stat-val.c-pending     { color: var(--s-pending); }
   .stat-val.c-in_progress { color: var(--s-in_progress); }
   .stat-val.c-done        { color: var(--s-complete); }
   .stat-val.c-complete    { color: var(--s-complete); }
   .stat-val.c-blocked     { color: var(--s-blocked); }
 
+  /* ── Dual Tab Bar ── */
+  .tab-rows { margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px; }
+  .tab-row  { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+  .tab-row-label {
+    font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px;
+    padding: 0 8px; color: var(--muted); flex-shrink: 0; min-width: 72px;
+  }
+  .tab-row-label.pipeline-lbl { color: #7289da; }
+  .tab-row-label.gov-lbl      { color: #c8871a; }
+  .tab-row-label.aux-lbl      { color: #c03538; }
+
+  .tab-btn {
+    padding: 5px 12px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface2);
+    color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all .12s;
+    white-space: nowrap;
+  }
+  .tab-btn:hover { color: var(--text); border-color: var(--border2); }
+
+  /* Pipeline active */
+  .tab-btn.tab-pipeline.active {
+    background: var(--pipeline-bg); border-color: var(--pipeline-bd); color: #818cf8;
+  }
+  .tab-btn.tab-pipeline:hover { border-color: var(--pipeline); }
+
+  /* Governance active */
+  .tab-btn.tab-governance.active {
+    background: var(--gov-bg); border-color: var(--gov-bd); color: #fbbf24;
+  }
+  .tab-btn.tab-governance:hover { border-color: var(--gov); }
+
+  /* Auxiliary active */
+  .tab-btn.tab-auxiliary.active {
+    background: var(--aux-bg); border-color: var(--aux-bd); color: #f87171;
+  }
+  .tab-btn.tab-auxiliary:hover { border-color: var(--aux); }
+
+  .tab-panel.hidden { display: none !important; }
+  .tab-panel-inner { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-height: 120px; }
+  .tab-panel-inner pre { white-space: pre-wrap; font-size: 12px; color: var(--muted); margin: 0; }
+  .data-row { border-bottom: 1px solid var(--border); padding: 10px 0; font-size: 13px; }
+  .data-row:last-child { border-bottom: none; }
+
   /* ── Controls ── */
   .controls { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: flex-start; }
   .search   { flex: 1; min-width: 180px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; color: var(--text); font-size: 14px; outline: none; transition: border-color .15s; }
   .search:focus { border-color: var(--accent); }
   .search::placeholder { color: var(--muted); }
-
   .filter-group { display: flex; flex-direction: column; gap: 7px; }
   .filter-row   { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .filter-row-label { color: var(--muted); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; margin-right: 2px; white-space: nowrap; }
-
   .pf-btn { padding: 5px 11px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 12px; cursor: pointer; transition: all .15s; }
   .pf-btn:hover  { border-color: var(--accent); color: var(--text); }
   .pf-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -118,7 +192,6 @@
   .pf-btn.p3.active { background: var(--p3); border-color: var(--p3); color: #111; }
   .pf-btn.p4.active { background: var(--p4); border-color: var(--p4); }
   .pf-btn.p5.active { background: var(--p5); border-color: var(--p5); }
-
   .at-btn { padding: 4px 9px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 11px; font-family: 'SF Mono', 'Fira Code', monospace; letter-spacing: .15px; cursor: pointer; transition: all .15s; }
   .at-btn.plain { font-family: inherit; letter-spacing: normal; font-size: 12px; }
   .at-btn:hover { border-color: var(--accent); color: var(--text); }
@@ -127,15 +200,14 @@
   /* ── Table ── */
   .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
   table  { width: 100%; border-collapse: collapse; }
-  thead  { background: #141720; }
-  th     { padding: 10px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap; }
+  thead  { background: #111; }
+  th     { padding: 10px 14px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap; }
   th:hover { color: var(--text); }
   th .sort-icon { opacity: .4; margin-left: 4px; }
   th.sorted .sort-icon { opacity: 1; color: var(--accent); }
   td   { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
   tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(255,255,255,.02); }
-
+  tr:hover td { background: rgba(255,255,255,.015); }
   .col-pri    { width: 56px; }
   .col-proj   { width: 110px; }
   .col-title  { width: auto; }
@@ -145,11 +217,8 @@
   .col-date   { width: 88px; }
   .col-actions{ width: 112px; }
   .req-badge  { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; background: rgba(99,102,241,.15); color: var(--accent-h); letter-spacing: .3px; }
-
   .proj-tag { display: inline-block; padding: 2px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; background: rgba(99,102,241,.12); color: var(--accent-h); letter-spacing: .2px; white-space: nowrap; max-width: 100px; overflow: hidden; text-overflow: ellipsis; }
-  /* Hide project column when a single project is selected */
   .project-selected .col-proj { display: none; }
-
   .task-id    { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 10px; color: var(--muted); opacity: .6; margin-bottom: 3px; letter-spacing: .2px; }
   .task-title { font-weight: 600; margin-bottom: 2px; }
   .task-desc  { color: var(--muted); font-size: 12px; line-height: 1.4; max-width: 420px; margin-top: 2px; }
@@ -164,15 +233,12 @@
   .pri-badge.p3 { background: var(--p3-bg); color: var(--p3); }
   .pri-badge.p4 { background: var(--p4-bg); color: var(--p4); }
   .pri-badge.p5 { background: var(--p5-bg); color: var(--p5); }
-
   .status-badge.pending     { background: var(--s-pending-bg);     color: var(--s-pending); }
   .status-badge.in_progress { background: var(--s-in_progress-bg); color: var(--s-in_progress); }
   .status-badge.done,
   .status-badge.complete    { background: var(--s-complete-bg);    color: var(--s-complete); }
   .status-badge.blocked     { background: var(--s-blocked-bg);     color: var(--s-blocked); }
   .status-badge.failed      { background: var(--s-failed-bg);      color: var(--s-failed); }
-
-  /* ── Action type badges ── */
   .type-badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; letter-spacing: .1px; white-space: nowrap; font-family: 'SF Mono', 'Fira Code', monospace; }
   .type-badge.claude_execute { background: #1a1b35; color: #818cf8; }
   .type-badge.log_only       { background: #101e35; color: #60a5fa; }
@@ -189,10 +255,11 @@
   .btn.btn-completed:hover { border-color: var(--s-complete); }
   .btn.btn-del    { color: var(--p1); border-color: var(--p1-bg); }
   .btn.btn-del:hover  { border-color: var(--p1); }
-  .btn.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; padding: 8px 18px; font-size: 14px; border-radius: 8px; font-weight: 600; }
+  .btn.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; padding: 8px 18px; font-size: 13px; border-radius: 8px; font-weight: 600; }
   .btn.btn-primary:hover { background: var(--accent-h); border-color: var(--accent-h); }
-  .btn.btn-ghost  { background: transparent; border-color: var(--border); color: var(--muted); padding: 8px 14px; font-size: 14px; border-radius: 8px; }
+  .btn.btn-ghost  { background: transparent; border-color: var(--border); color: var(--muted); padding: 8px 14px; font-size: 13px; border-radius: 8px; }
   .btn.btn-ghost:hover { color: var(--text); }
+  .btn.btn-sm { padding: 4px 10px; font-size: 12px; }
 
   /* ── Empty state ── */
   .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
@@ -200,11 +267,11 @@
   .empty p    { font-size: 15px; }
 
   /* ── Modal ── */
-  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
-  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 520px; padding: 28px; }
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 14px; width: 100%; max-width: 520px; padding: 28px; }
   .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 22px; }
   .field       { margin-bottom: 16px; }
-  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .field label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
   .field input,
   .field textarea,
   .field select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 14px; font-family: inherit; outline: none; resize: vertical; transition: border-color .15s; }
@@ -230,23 +297,7 @@
 
   .hidden { display: none !important; }
 
-  /* ── Project tabs ── */
-  .tab-bar { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
-  .tab-bar.hidden { display: none !important; }
-  .tab-btn {
-    padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface);
-    color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s;
-  }
-  .tab-btn:hover { border-color: var(--accent); color: var(--text); }
-  .tab-btn.active { background: rgba(99,102,241,.15); border-color: var(--accent); color: var(--accent-h); }
-  .tab-panel { margin-bottom: 4px; }
-  .tab-panel.hidden { display: none !important; }
-  .tab-panel-inner { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-height: 120px; }
-  .tab-panel-inner pre { white-space: pre-wrap; font-size: 12px; color: var(--muted); margin: 0; }
-  .data-row { border-bottom: 1px solid var(--border); padding: 10px 0; font-size: 13px; }
-  .data-row:last-child { border-bottom: none; }
-
-  /* ── Execution Loop playbook ── */
+  /* ── Execution Playbook ── */
   .exec-playbook { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 18px; overflow: hidden; }
   .exec-playbook > summary { padding: 12px 16px; cursor: pointer; font-weight: 600; font-size: 13px; color: var(--accent-h); list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .exec-playbook > summary::-webkit-details-marker { display: none; }
@@ -255,7 +306,7 @@
   .exec-playbook .playbook-inner { padding: 0 16px 16px; border-top: 1px solid var(--border); }
   .exec-playbook .playbook-note { font-size: 12px; color: var(--muted); margin: 12px 0 14px; line-height: 1.45; }
   .exec-playbook .playbook-note code { font-size: 11px; background: var(--bg); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); }
-  .playbook-step { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: rgba(0,0,0,.15); }
+  .playbook-step { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: rgba(0,0,0,.2); }
   .playbook-step:last-child { margin-bottom: 0; }
   .playbook-step h3 { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 8px; line-height: 1.35; }
   .playbook-step p { font-size: 12px; color: var(--muted); line-height: 1.45; margin: 0 0 6px; }
@@ -266,10 +317,13 @@
 <div class="shell">
   <aside class="sidebar" aria-label="Project navigation">
     <div class="sidebar-brand">
-      <h2>Task Dashboard</h2>
-      <p>Filter by project</p>
+      <div class="brand-dot"></div>
+      <div class="brand-text">
+        <h2>mG-POD Command Center</h2>
+        <p>Agent Pipeline</p>
+      </div>
     </div>
-    <div class="sidebar-section-label">Project</div>
+    <div class="sidebar-section-label">Projects</div>
     <nav class="project-nav" id="projectNav"></nav>
   </aside>
 
@@ -278,122 +332,30 @@
 
   <!-- Header -->
   <div class="header">
-    <h1>Tasks</h1>
+    <div class="header-left">
+      <h1>Command Center</h1>
+      <div class="status-indicator">
+        <div class="status-dot"></div>
+        LIVE
+      </div>
+    </div>
     <div class="header-right">
       <span class="refresh-label" id="refreshLabel">—</span>
-      <button class="btn" onclick="loadTasks()" title="Refresh">↻ Refresh</button>
+      <button class="btn btn-sm" onclick="loadTasks()" title="Refresh">↻ Refresh</button>
       <button class="btn btn-primary" onclick="openModal()">+ New Task</button>
     </div>
   </div>
 
-  <div class="tab-bar hidden" id="tabBar" role="tablist" aria-label="Project views">
-    <button type="button" class="tab-btn active" data-tab="tasks" onclick="switchTab('tasks')">Tasks</button>
-    <button type="button" class="tab-btn" data-tab="blueprints" onclick="switchTab('blueprints')">Blueprints</button>
-    <button type="button" class="tab-btn" data-tab="requirements" onclick="switchTab('requirements')">Requirements</button>
-    <button type="button" class="tab-btn" data-tab="decisions" onclick="switchTab('decisions')">Decisions</button>
-    <button type="button" class="tab-btn" data-tab="validations" onclick="switchTab('validations')">Validations</button>
-    <button type="button" class="tab-btn" data-tab="session" onclick="switchTab('session')">Session Log</button>
-    <button type="button" class="tab-btn" data-tab="execution-trace" onclick="switchTab('execution-trace')">Execution Trace</button>
-    <button type="button" class="tab-btn" data-tab="backlog" onclick="switchTab('backlog')">Backlog</button>
-    <button type="button" class="tab-btn" data-tab="approvals" onclick="switchTab('approvals')">Approvals</button>
-    <button type="button" class="tab-btn" data-tab="proposals" onclick="switchTab('proposals')">Proposals</button>
-    <button type="button" class="tab-btn" data-tab="audit-trail" onclick="switchTab('audit-trail')">Audit Trail</button>
-    <button type="button" class="tab-btn" data-tab="memory" onclick="switchTab('memory')">Memory</button>
-  </div>
-
-  <div id="tab-tasks" class="tab-panel">
-  <details class="exec-playbook">
-    <summary>CONSOLIDATED TASK SET — Execution Loop (Manual, AS-BUILT)</summary>
-    <div class="playbook-inner">
-      <p class="playbook-note">
-        To add these as real tasks under <strong>Global Claude</strong> (<code>claude-global</code>), run:
-        <code>python3 system/scripts/seed_execution_loop_project.py</code>
-        from the repo (services on <code>PYTHONPATH</code> via the script). After <code>init.sh</code>, run the same file under <code>~/agents/agent-system-base/system/scripts/</code>.
-      </p>
-      <div class="playbook-step">
-        <h3>Execution Loop / Runtime: Set working directory to runtime environment</h3>
-        <p><strong>Description</strong></p>
-        <p>Change the current directory to <code>~/agents/agent-services</code> before executing any system commands.</p>
-        <p><strong>Success criteria</strong></p>
-        <p>Commands executed from this directory resolve system modules without import errors.</p>
-      </div>
-      <div class="playbook-step">
-        <h3>Execution Loop / Dashboard: Start FastAPI server</h3>
-        <p><strong>Description</strong></p>
-        <p>Run <code>python3 system/dashboard/server.py</code> from the runtime directory.</p>
-        <p><strong>Success criteria</strong></p>
-        <p>Server starts without error and binds to <code>127.0.0.1:8765</code>.</p>
-      </div>
-      <div class="playbook-step">
-        <h3>Execution Loop / Dashboard: Verify dashboard availability</h3>
-        <p><strong>Description</strong></p>
-        <p>Open <code>http://127.0.0.1:8765</code> in a browser.</p>
-        <p><strong>Success criteria</strong></p>
-        <p>Dashboard loads and displays existing projects and tasks.</p>
-      </div>
-      <div class="playbook-step">
-        <h3>Execution Loop / Worker: Execute manual task worker</h3>
-        <p><strong>Description</strong></p>
-        <p>Run <code>python3 system/services/task_worker.py --mode manual</code> from the runtime directory.</p>
-        <p><strong>Success criteria</strong></p>
-        <p>Terminal outputs <code>READY task_id=... run_id=...</code>.</p>
-      </div>
-      <div class="playbook-step">
-        <h3>Execution Loop / State: Validate task claim and run creation</h3>
-        <p><strong>Description</strong></p>
-        <p>Check via dashboard or API that the claimed task status is <code>in_progress</code> and the run status is <code>pending_input</code> with a non-empty prompt.</p>
-        <p><strong>Success criteria</strong></p>
-        <p>Task is <code>in_progress</code> and run is <code>pending_input</code> with populated <code>input_prompt</code>.</p>
-      </div>
-      <div class="playbook-step">
-        <h3>Execution Loop / External Execution: Execute generated prompt</h3>
-        <p><strong>Description</strong></p>
-        <p>Copy the <code>input_prompt</code> and execute it in an external tool (Claude or Cursor).</p>
-        <p><strong>Success criteria</strong></p>
-        <p>A complete output is produced from the prompt.</p>
-      </div>
-      <div class="playbook-step">
-        <h3>Execution Loop / Completion: Submit task completion via API</h3>
-        <p><strong>Description</strong></p>
-        <p>Send a POST request to <code>/api/tasks/{task_id}/complete</code> with the execution output as a plain text body.</p>
-        <p><strong>Success criteria</strong></p>
-        <p>Request succeeds and the system accepts the output.</p>
-      </div>
-      <div class="playbook-step">
-        <h3>Execution Loop / Completion Policy: Define output-preserving completion requirement</h3>
-        <p><strong>Description</strong></p>
-        <p>Treat completion via API with a plain text body as required for any task where execution output must be preserved as part of the run record.</p>
-        <p><strong>Success criteria</strong></p>
-        <p>Tasks requiring output preservation are completed with non-placeholder output stored in the run.</p>
-      </div>
-      <div class="playbook-step">
-        <h3>Execution Loop / Completion Policy: Allow administrative completion via dashboard</h3>
-        <p><strong>Description</strong></p>
-        <p>Allow use of the dashboard “Done” action (no request body) only for cases where output preservation is not required.</p>
-        <p><strong>Success criteria</strong></p>
-        <p>Tasks completed via dashboard without body are explicitly recognized as administrative completions with placeholder output.</p>
-      </div>
-      <div class="playbook-step">
-        <h3>Execution Loop / State: Validate completion</h3>
-        <p><strong>Description</strong></p>
-        <p>Verify that the task status is <code>done</code> and the run status is <code>success</code>, and output is stored.</p>
-        <p><strong>Success criteria</strong></p>
-        <p>Task is <code>done</code>, run is <code>success</code>, and output field is populated.</p>
-      </div>
-      <p class="playbook-note" style="margin-top:14px;margin-bottom:0;font-weight:600;color:var(--accent-h);">Execution Loop complete.</p>
-    </div>
-  </details>
-
-  <!-- Context Banner (visible when a project is selected) -->
+  <!-- Context Banner -->
   <div class="context-banner hidden" id="contextBanner">
     <div class="context-left">
       <div class="context-name" id="contextName">—</div>
       <div class="context-meta" id="contextMeta"></div>
     </div>
-    <button class="context-clear" onclick="setProjectFilter('all')">← All Tasks</button>
+    <button class="context-clear" onclick="setProjectFilter('all')">← All Projects</button>
   </div>
 
-  <!-- Stats (counts reflect active project filter) -->
+  <!-- Metric Cards -->
   <div class="stats">
     <div class="stat" onclick="setStatusFilter('all')" id="stat-all">
       <div class="stat-val" id="count-total">0</div>
@@ -417,51 +379,124 @@
     </div>
   </div>
 
-  <!-- Controls -->
-  <div class="controls">
-    <input class="search" type="text" id="search" placeholder="Search tasks…" oninput="renderTasks()">
-    <div class="filter-group">
-      <div class="filter-row">
-        <span class="filter-row-label">Pri</span>
-        <button class="pf-btn active" data-p="all" onclick="setPriFilter('all')">All</button>
-        <button class="pf-btn p1"    data-p="1"   onclick="setPriFilter('1')">P1</button>
-        <button class="pf-btn p2"    data-p="2"   onclick="setPriFilter('2')">P2</button>
-        <button class="pf-btn p3"    data-p="3"   onclick="setPriFilter('3')">P3</button>
-        <button class="pf-btn p4"    data-p="4"   onclick="setPriFilter('4')">P4</button>
-        <button class="pf-btn p5"    data-p="5"   onclick="setPriFilter('5')">P5</button>
-      </div>
-      <div class="filter-row">
-        <span class="filter-row-label">Type</span>
-        <button class="at-btn plain active" data-t="all"            onclick="setTypeFilter('all')">All</button>
-        <button class="at-btn"             data-t="claude_execute"  onclick="setTypeFilter('claude_execute')">claude_execute</button>
-        <button class="at-btn"             data-t="log_only"        onclick="setTypeFilter('log_only')">log_only</button>
-        <button class="at-btn"             data-t="run_script"      onclick="setTypeFilter('run_script')">run_script</button>
-        <button class="at-btn"             data-t="run_plan"        onclick="setTypeFilter('run_plan')">run_plan</button>
-        <button class="at-btn"             data-t="generate_file"   onclick="setTypeFilter('generate_file')">generate_file</button>
-      </div>
+  <!-- Dual Tab Bar -->
+  <div class="tab-rows">
+    <!-- Row 1: Pipeline + Governance -->
+    <div class="tab-row">
+      <span class="tab-row-label pipeline-lbl">Pipeline</span>
+      <button type="button" class="tab-btn tab-pipeline active" data-tab="tasks"           onclick="switchTab('tasks')">Tasks</button>
+      <button type="button" class="tab-btn tab-pipeline"        data-tab="blueprints"      onclick="switchTab('blueprints')">Blueprints</button>
+      <button type="button" class="tab-btn tab-pipeline"        data-tab="session"         onclick="switchTab('session')">Session Log</button>
+      <button type="button" class="tab-btn tab-pipeline"        data-tab="execution-trace" onclick="switchTab('execution-trace')">Execution Trace</button>
+      <span style="display:inline-block;width:1px;height:20px;background:var(--border);margin:0 6px;vertical-align:middle;"></span>
+      <span class="tab-row-label gov-lbl" style="min-width:auto">Governance</span>
+      <button type="button" class="tab-btn tab-governance" data-tab="decisions"  onclick="switchTab('decisions')">Decisions</button>
+      <button type="button" class="tab-btn tab-governance" data-tab="memory"     onclick="switchTab('memory')">Memory</button>
+      <button type="button" class="tab-btn tab-governance" data-tab="approvals"  onclick="switchTab('approvals')">Approvals</button>
+      <button type="button" class="tab-btn tab-governance" data-tab="backlog"    onclick="switchTab('backlog')">Backlog</button>
+      <button type="button" class="tab-btn tab-governance" data-tab="audit-trail" onclick="switchTab('audit-trail')">Audit Trail</button>
+    </div>
+    <!-- Row 2: Auxiliary Specialists -->
+    <div class="tab-row">
+      <span class="tab-row-label aux-lbl">Specialists</span>
+      <button type="button" class="tab-btn tab-auxiliary" data-tab="aux-strategist"    onclick="switchTab('aux-strategist')">Strategist</button>
+      <button type="button" class="tab-btn tab-auxiliary" data-tab="aux-system-design" onclick="switchTab('aux-system-design')">System Design</button>
+      <button type="button" class="tab-btn tab-auxiliary" data-tab="aux-backend-spec"  onclick="switchTab('aux-backend-spec')">Backend Spec</button>
+      <button type="button" class="tab-btn tab-auxiliary" data-tab="aux-db-spec"       onclick="switchTab('aux-db-spec')">DB Spec</button>
+      <button type="button" class="tab-btn tab-auxiliary" data-tab="aux-schema-spec"   onclick="switchTab('aux-schema-spec')">Schema Spec</button>
+      <button type="button" class="tab-btn tab-auxiliary" data-tab="aux-ui-spec"       onclick="switchTab('aux-ui-spec')">UI Spec</button>
+      <button type="button" class="tab-btn tab-auxiliary" data-tab="aux-senior-dev"    onclick="switchTab('aux-senior-dev')">Senior Dev</button>
     </div>
   </div>
 
-  <!-- Table -->
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th class="col-pri"    onclick="setSort('priority')">Pri <span class="sort-icon" id="sort-priority">↕</span></th>
-          <th class="col-proj"   onclick="setSort('project_id')">Project <span class="sort-icon" id="sort-project_id">↕</span></th>
-          <th class="col-title"  onclick="setSort('title')">Title <span class="sort-icon" id="sort-title">↕</span></th>
-          <th class="col-type"   onclick="setSort('action_type')">Type <span class="sort-icon" id="sort-action_type">↕</span></th>
-          <th class="col-status" onclick="setSort('status')">Status <span class="sort-icon" id="sort-status">↕</span></th>
-          <th class="col-req"    onclick="setSort('requirement_ref')">Req <span class="sort-icon" id="sort-requirement_ref">↕</span></th>
-          <th class="col-date"   onclick="setSort('updated_at')">Updated <span class="sort-icon" id="sort-updated_at">↕</span></th>
-          <th class="col-actions">Actions</th>
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
-  </div>
+  <!-- ── Tab Panels ── -->
+
+  <!-- Tasks tab -->
+  <div id="tab-tasks" class="tab-panel">
+    <details class="exec-playbook">
+      <summary>CONSOLIDATED TASK SET — Execution Loop (Manual, AS-BUILT)</summary>
+      <div class="playbook-inner">
+        <p class="playbook-note">
+          To add these as real tasks under <strong>Global Claude</strong> (<code>claude-global</code>), run:
+          <code>python3 system/scripts/seed_execution_loop_project.py</code>
+          from the repo (services on <code>PYTHONPATH</code> via the script). After <code>init.sh</code>, run the same file under <code>~/agents/agent-system-base/system/scripts/</code>.
+        </p>
+        <div class="playbook-step">
+          <h3>Execution Loop / Runtime: Set working directory to runtime environment</h3>
+          <p><strong>Description</strong></p>
+          <p>Change the current directory to <code>~/agents/agent-services</code> before executing any system commands.</p>
+          <p><strong>Success criteria</strong></p>
+          <p>Commands executed from this directory resolve system modules without import errors.</p>
+        </div>
+        <div class="playbook-step">
+          <h3>Execution Loop / Dashboard: Start FastAPI server</h3>
+          <p><strong>Description</strong></p>
+          <p>Run <code>python3 system/dashboard/server.py</code> from the runtime directory.</p>
+          <p><strong>Success criteria</strong></p>
+          <p>Server starts without error and binds to <code>127.0.0.1:8765</code>.</p>
+        </div>
+        <div class="playbook-step">
+          <h3>Execution Loop / Worker: Execute manual task worker</h3>
+          <p><strong>Description</strong></p>
+          <p>Run <code>python3 system/services/task_worker.py --mode manual</code> from the runtime directory.</p>
+          <p><strong>Success criteria</strong></p>
+          <p>Terminal outputs <code>READY task_id=... run_id=...</code>.</p>
+        </div>
+        <div class="playbook-step">
+          <h3>Execution Loop / Completion: Submit task completion via API</h3>
+          <p><strong>Description</strong></p>
+          <p>Send a POST request to <code>/api/tasks/{task_id}/complete</code> with the execution output as a plain text body.</p>
+          <p><strong>Success criteria</strong></p>
+          <p>Request succeeds and the system accepts the output.</p>
+        </div>
+        <p class="playbook-note" style="margin-top:14px;margin-bottom:0;font-weight:600;color:var(--accent-h);">Execution Loop complete.</p>
+      </div>
+    </details>
+
+    <div class="controls">
+      <input class="search" type="text" id="search" placeholder="Search tasks…" oninput="renderTasks()">
+      <div class="filter-group">
+        <div class="filter-row">
+          <span class="filter-row-label">Pri</span>
+          <button class="pf-btn active" data-p="all" onclick="setPriFilter('all')">All</button>
+          <button class="pf-btn p1"    data-p="1"   onclick="setPriFilter('1')">P1</button>
+          <button class="pf-btn p2"    data-p="2"   onclick="setPriFilter('2')">P2</button>
+          <button class="pf-btn p3"    data-p="3"   onclick="setPriFilter('3')">P3</button>
+          <button class="pf-btn p4"    data-p="4"   onclick="setPriFilter('4')">P4</button>
+          <button class="pf-btn p5"    data-p="5"   onclick="setPriFilter('5')">P5</button>
+        </div>
+        <div class="filter-row">
+          <span class="filter-row-label">Type</span>
+          <button class="at-btn plain active" data-t="all"           onclick="setTypeFilter('all')">All</button>
+          <button class="at-btn"             data-t="claude_execute" onclick="setTypeFilter('claude_execute')">claude_execute</button>
+          <button class="at-btn"             data-t="log_only"       onclick="setTypeFilter('log_only')">log_only</button>
+          <button class="at-btn"             data-t="run_script"     onclick="setTypeFilter('run_script')">run_script</button>
+          <button class="at-btn"             data-t="run_plan"       onclick="setTypeFilter('run_plan')">run_plan</button>
+          <button class="at-btn"             data-t="generate_file"  onclick="setTypeFilter('generate_file')">generate_file</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-pri"    onclick="setSort('priority')">Pri <span class="sort-icon" id="sort-priority">↕</span></th>
+            <th class="col-proj"   onclick="setSort('project_id')">Project <span class="sort-icon" id="sort-project_id">↕</span></th>
+            <th class="col-title"  onclick="setSort('title')">Title <span class="sort-icon" id="sort-title">↕</span></th>
+            <th class="col-type"   onclick="setSort('action_type')">Type <span class="sort-icon" id="sort-action_type">↕</span></th>
+            <th class="col-status" onclick="setSort('status')">Status <span class="sort-icon" id="sort-status">↕</span></th>
+            <th class="col-req"    onclick="setSort('requirement_ref')">Req <span class="sort-icon" id="sort-requirement_ref">↕</span></th>
+            <th class="col-date"   onclick="setSort('updated_at')">Updated <span class="sort-icon" id="sort-updated_at">↕</span></th>
+            <th class="col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
   </div>
 
+  <!-- Blueprints tab -->
   <div id="tab-blueprints" class="tab-panel hidden">
     <div class="tab-panel-inner">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -472,16 +507,23 @@
     </div>
   </div>
 
-  <div id="tab-requirements" class="tab-panel hidden">
+  <!-- Session Log tab -->
+  <div id="tab-session" class="tab-panel hidden">
     <div class="tab-panel-inner">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <strong style="font-size:14px;color:var(--text);">Requirements</strong>
-        <button type="button" class="btn btn-primary" onclick="showAddRequirement()">+ Add Requirement</button>
-      </div>
-      <div id="requirementList"></div>
+      <strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Session Logs</strong>
+      <div id="sessionList"></div>
     </div>
   </div>
 
+  <!-- Execution Trace tab -->
+  <div id="tab-execution-trace" class="tab-panel hidden">
+    <div class="tab-panel-inner">
+      <strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Execution Trace</strong>
+      <div id="executionTraceList"></div>
+    </div>
+  </div>
+
+  <!-- Decisions tab -->
   <div id="tab-decisions" class="tab-panel hidden">
     <div class="tab-panel-inner">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -492,44 +534,7 @@
     </div>
   </div>
 
-  <div id="tab-validations" class="tab-panel hidden">
-    <div class="tab-panel-inner">
-      <strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Validations</strong>
-      <div id="validationList"></div>
-    </div>
-  </div>
-
-  <div id="tab-session" class="tab-panel hidden">
-    <div class="tab-panel-inner">
-      <strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Session logs</strong>
-      <div id="sessionList"></div>
-    </div>
-  </div>
-
-  <div id="tab-execution-trace" class="tab-panel hidden">
-    <div class="tab-panel-inner">
-      <strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Execution Trace</strong>
-      <div id="executionTraceList"></div>
-    </div>
-  </div>
-
-  <div id="tab-backlog" class="tab-panel hidden">
-    <div class="tab-panel-inner">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <strong style="font-size:14px;color:var(--text);">Backlog</strong>
-        <button type="button" class="btn btn-primary" onclick="showAddBacklog()">+ Add Idea</button>
-      </div>
-      <div id="backlogList"></div>
-    </div>
-  </div>
-
-  <div id="tab-approvals" class="tab-panel hidden">
-    <div class="tab-panel-inner">
-      <strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Approvals</strong>
-      <div id="approvalList"></div>
-    </div>
-  </div>
-
+  <!-- Memory tab -->
   <div id="tab-memory" class="tab-panel hidden">
     <div class="tab-panel-inner">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -540,19 +545,38 @@
     </div>
   </div>
 
-  <div id="tab-proposals" class="tab-panel hidden">
+  <!-- Approvals tab -->
+  <div id="tab-approvals" class="tab-panel hidden">
     <div class="tab-panel-inner">
-      <strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Agent Proposals</strong>
-      <div id="proposalsList"></div>
+      <strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Approvals</strong>
+      <div id="approvalList"></div>
     </div>
   </div>
 
+  <!-- Backlog tab -->
+  <div id="tab-backlog" class="tab-panel hidden">
+    <div class="tab-panel-inner">
+      <strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Backlog</strong>
+      <div id="backlogList"></div>
+    </div>
+  </div>
+
+  <!-- Audit Trail tab -->
   <div id="tab-audit-trail" class="tab-panel hidden">
     <div class="tab-panel-inner">
       <strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Audit Trail</strong>
-      <div id="auditTrailList"></div>
+      <p style="color:var(--muted)">Audit trail coming soon.</p>
     </div>
   </div>
+
+  <!-- Auxiliary Specialist Tabs -->
+  <div id="tab-aux-strategist"    class="tab-panel hidden"><div class="tab-panel-inner"><strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Strategist</strong><div id="aux-list-strategist"></div></div></div>
+  <div id="tab-aux-system-design" class="tab-panel hidden"><div class="tab-panel-inner"><strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">System Design</strong><div id="aux-list-system-design"></div></div></div>
+  <div id="tab-aux-backend-spec"  class="tab-panel hidden"><div class="tab-panel-inner"><strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Backend Spec</strong><div id="aux-list-backend-spec"></div></div></div>
+  <div id="tab-aux-db-spec"       class="tab-panel hidden"><div class="tab-panel-inner"><strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">DB Spec</strong><div id="aux-list-db-spec"></div></div></div>
+  <div id="tab-aux-schema-spec"   class="tab-panel hidden"><div class="tab-panel-inner"><strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Schema Spec</strong><div id="aux-list-schema-spec"></div></div></div>
+  <div id="tab-aux-ui-spec"       class="tab-panel hidden"><div class="tab-panel-inner"><strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">UI Spec</strong><div id="aux-list-ui-spec"></div></div></div>
+  <div id="tab-aux-senior-dev"    class="tab-panel hidden"><div class="tab-panel-inner"><strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Senior Dev</strong><div id="aux-list-senior-dev"></div></div></div>
 
   </div>
   </div>
@@ -594,22 +618,48 @@
 <script>
 // ── State ─────────────────────────────────────────────────────────────────────
 let allTasks      = [];
-let allProjects   = [];   // [{id, name, slug, ...}]
-let projectMap    = {};   // {id: {name, slug}}
+let allProjects   = [];
+let projectMap    = {};
 let editingId     = null;
 let selectedPri   = 1;
 let statusFilter  = 'all';
 let priFilter     = 'all';
 let typeFilter    = 'all';
-let projectFilter = 'all';  // 'all' | integer project_id
+let projectFilter = 'all';
 let sortKey       = 'priority';
 let sortAsc       = true;
 let activeTab     = 'tasks';
 
 const PRI_LABELS   = { 1:'Critical', 2:'High', 3:'Medium', 4:'Low', 5:'Backlog' };
-/** Display labels; API/SQLite status for finished work is always `done`. */
 const STATUS_LABEL = { pending:'Pending', in_progress:'In Progress', done:'Completed', blocked:'Blocked', failed:'Failed' };
 const KNOWN_TYPES  = ['claude_execute', 'log_only', 'run_script', 'run_plan', 'generate_file'];
+
+const ALL_TABS = [
+  'tasks','blueprints','session','execution-trace',
+  'decisions','memory','approvals','backlog','audit-trail',
+  'aux-strategist','aux-system-design','aux-backend-spec',
+  'aux-db-spec','aux-schema-spec','aux-ui-spec','aux-senior-dev',
+];
+
+const AUX_ROLE_MAP = {
+  'aux-strategist':    'strategist',
+  'aux-system-design': 'system_design',
+  'aux-backend-spec':  'backend_spec',
+  'aux-db-spec':       'db_spec',
+  'aux-schema-spec':   'schema_spec',
+  'aux-ui-spec':       'ui_spec',
+  'aux-senior-dev':    'senior_dev',
+};
+
+const AUX_LIST_MAP = {
+  'aux-strategist':    'aux-list-strategist',
+  'aux-system-design': 'aux-list-system-design',
+  'aux-backend-spec':  'aux-list-backend-spec',
+  'aux-db-spec':       'aux-list-db-spec',
+  'aux-schema-spec':   'aux-list-schema-spec',
+  'aux-ui-spec':       'aux-list-ui-spec',
+  'aux-senior-dev':    'aux-list-senior-dev',
+};
 
 // ── API ───────────────────────────────────────────────────────────────────────
 async function api(method, path, body) {
@@ -643,7 +693,7 @@ async function loadTasks() {
     ]);
     projectMap = {};
     allProjects.forEach(p => { projectMap[p.id] = p; });
-    renderProjectStrip(); // sidebar project list
+    renderProjectStrip();
     updateStats();
     renderTasks();
     document.getElementById('refreshLabel').textContent = 'Updated ' + new Date().toLocaleTimeString();
@@ -660,7 +710,6 @@ function renderProjectStrip() {
     if (pid != null) counts[pid] = (counts[pid] || 0) + 1;
   });
 
-  // Show every registered project (count may be 0 — empty projects were previously hidden).
   const sorted = allProjects.slice().sort((a, b) => {
     const ca = counts[a.id] || 0;
     const cb = counts[b.id] || 0;
@@ -687,11 +736,9 @@ function renderProjectStrip() {
     nav.appendChild(row);
   };
 
-  mkRow('All', allTasks.length, 'all');
-
+  mkRow('All Projects', allTasks.length, 'all');
   sorted.forEach(proj => {
-    const count = counts[proj.id] || 0;
-    mkRow(proj.name, count, proj.id);
+    mkRow(proj.name, counts[proj.id] || 0, proj.id);
   });
 }
 
@@ -712,7 +759,6 @@ function updateContextBanner() {
   const chips = order.filter(s => counts[s]).map(s =>
     `<div class="context-chip"><b class="c-${s}">${counts[s]}</b> ${labels[s]}</div>`
   ).join('');
-
   document.getElementById('contextMeta').innerHTML =
     `<div class="context-chip"><b>${tasks.length}</b> tasks</div>` + chips;
 }
@@ -739,17 +785,10 @@ function updateStats() {
 // ── Filters & Sort ────────────────────────────────────────────────────────────
 function setProjectFilter(proj) {
   projectFilter = proj;
-  const tabBar = document.getElementById('tabBar');
-  if (tabBar) {
-    const show = proj !== 'all' && proj != null;
-    tabBar.classList.toggle('hidden', !show);
-    if (show) {
-      switchTab('tasks');
-    }
-  }
   renderProjectStrip();
   updateStats();
   renderTasks();
+  loadTabData(activeTab);
 }
 
 function switchTab(tabName) {
@@ -757,12 +796,7 @@ function switchTab(tabName) {
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.tab === tabName);
   });
-  const panels = [
-    'tasks', 'blueprints', 'requirements', 'decisions', 'validations',
-    'session', 'execution-trace', 'backlog', 'approvals', 'proposals',
-    'audit-trail', 'memory'
-  ];
-  panels.forEach(t => {
+  ALL_TABS.forEach(t => {
     const el = document.getElementById('tab-' + t);
     if (el) el.classList.toggle('hidden', t !== tabName);
   });
@@ -774,52 +808,50 @@ function activeProjectIdForTabs() {
   return projectFilter;
 }
 
-function _placeholderProjectRequired(tab) {
-  const msg = 'Select a project in the sidebar (not “All Tasks”) to load this tab. After editing files on disk, run <code style="font-size:11px">agents push</code>.';
-  const map = {
-    blueprints: 'blueprintList',
-    requirements: 'requirementList',
-    decisions: 'decisionList',
-    validations: 'validationList',
-    session: 'sessionList',
-    'execution-trace': 'executionTraceList',
-    backlog: 'backlogList',
-    approvals: 'approvalList',
-    proposals: 'proposalsList',
-    'audit-trail': 'auditTrailList',
-    memory: 'memoryList'
-  };
-  const id = map[tab];
-  if (id) document.getElementById(id).innerHTML = '<p style="color:var(--muted);line-height:1.5">' + msg + '</p>';
+function _placeholderProjectRequired(listId) {
+  const el = document.getElementById(listId);
+  if (el) el.innerHTML = '<p style="color:var(--muted);line-height:1.5">Select a project in the sidebar to load this tab.</p>';
 }
 
 async function loadTabData(tab) {
   const pid = activeProjectIdForTabs();
   if (tab === 'tasks') return;
+
+  const needsProject = [
+    'blueprints','session','execution-trace','decisions','memory',
+    'approvals','backlog',
+    ...Object.keys(AUX_LIST_MAP),
+  ];
+
   if (!pid) {
-    _placeholderProjectRequired(tab);
+    if (tab === 'blueprints')      _placeholderProjectRequired('blueprintList');
+    if (tab === 'decisions')       _placeholderProjectRequired('decisionList');
+    if (tab === 'session')         _placeholderProjectRequired('sessionList');
+    if (tab === 'execution-trace') _placeholderProjectRequired('executionTraceList');
+    if (tab === 'memory')          _placeholderProjectRequired('memoryList');
+    if (tab === 'approvals')       _placeholderProjectRequired('approvalList');
+    if (tab === 'backlog')         _placeholderProjectRequired('backlogList');
+    if (AUX_LIST_MAP[tab])         _placeholderProjectRequired(AUX_LIST_MAP[tab]);
     return;
   }
+
   try {
-    if (tab === 'blueprints') await loadBlueprints(pid);
-    if (tab === 'requirements') await loadRequirements(pid);
-    if (tab === 'decisions') await loadDecisions(pid);
-    if (tab === 'validations') await loadValidations(pid);
-    if (tab === 'session') await loadSessionLogs(pid);
+    if (tab === 'blueprints')      await loadBlueprints(pid);
+    if (tab === 'decisions')       await loadDecisions(pid);
+    if (tab === 'session')         await loadSessionLogs(pid);
     if (tab === 'execution-trace') await loadExecutionTrace(pid);
-    if (tab === 'backlog') await loadBacklog(pid);
-    if (tab === 'approvals') await loadApprovals(pid);
-    if (tab === 'memory') await loadMemory(pid);
-    if (tab === 'proposals') await loadProposals(pid);
-    if (tab === 'audit-trail') await loadAuditTrail(pid);
+    if (tab === 'memory')          await loadMemory(pid);
+    if (tab === 'approvals')       await loadApprovals(pid);
+    if (tab === 'backlog')         await loadBacklog(pid);
+    if (AUX_ROLE_MAP[tab])         await loadAuxiliarySpecialist(pid, AUX_ROLE_MAP[tab], AUX_LIST_MAP[tab]);
   } catch (e) {
     toast('Tab load failed: ' + e.message, 'err');
   }
 }
 
+// ── Tab Data Loaders ──────────────────────────────────────────────────────────
 async function loadBlueprints(projectId) {
   const raw = await api('GET', '/projects/' + projectId + '/blueprints');
-  // File mirrors for decisions/session live in Memory now; hide legacy blueprint rows.
   const hideTypes = { decisions_md: 1, session_md: 1 };
   const data = raw.filter(b => !hideTypes[b.type]);
   const el = document.getElementById('blueprintList');
@@ -861,6 +893,24 @@ async function loadSessionLogs(projectId) {
   }).join('');
 }
 
+async function loadExecutionTrace(projectId) {
+  const data = await api('GET', '/projects/' + projectId + '/execution-trace');
+  const el = document.getElementById('executionTraceList');
+  if (!data.length) { el.innerHTML = '<p style="color:var(--muted)">No execution trace entries yet.</p>'; return; }
+  el.innerHTML = data.map(e => {
+    const col = e.error_message ? '#ef4444' : '#22c55e';
+    return `<div class="data-row">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+        <strong style="font-size:12px;color:var(--accent-h)">${esc(e.agent_role)}</strong>
+        <span style="font-size:12px">${esc(e.action)}</span>
+        ${e.result ? '<span style="font-size:11px;color:' + col + ';margin-left:auto">' + esc(e.result) + '</span>' : ''}
+        <span style="font-size:10px;color:var(--muted)">${(e.timestamp||'').slice(0,19).replace('T',' ')}</span>
+      </div>
+      ${e.error_message ? '<div style="font-size:11px;color:#ef4444">' + esc(e.error_message) + '</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
 async function loadMemory(projectId) {
   const data = await api('GET', '/projects/' + projectId + '/memory');
   const el = document.getElementById('memoryList');
@@ -887,13 +937,78 @@ async function loadMemory(projectId) {
     const body = multiline
       ? '<pre style="' + preStyle + '">' + esc(v) + '</pre>'
       : '<div style="margin-top:6px">' + esc(v) + '</div>';
-    const lbl = memoryKeyLabel(m.key);
-    return '<div class="data-row"><strong style="color:var(--accent-h);font-size:13px;">' + esc(lbl) + '</strong>' + body + '</div>';
+    return '<div class="data-row"><strong style="color:var(--accent-h);font-size:13px;">' + esc(memoryKeyLabel(m.key)) + '</strong>' + body + '</div>';
+  }).join('');
+}
+
+async function loadApprovals(projectId) {
+  const data = await api('GET', '/projects/' + projectId + '/approvals');
+  const el = document.getElementById('approvalList');
+  if (!data.length) { el.innerHTML = '<p style="color:var(--muted)">No approvals yet.</p>'; return; }
+  const DECISION_COLOR = { approved: '#22c55e', rejected: '#ef4444' };
+  el.innerHTML = data.map(a => {
+    const col = DECISION_COLOR[a.decision] || 'var(--muted)';
+    return `<div class="data-row">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+        <strong style="font-size:13px">${esc(a.entity_type)} #${a.entity_id}</strong>
+        <span style="margin-left:auto;font-size:11px;font-weight:600;color:${col}">${esc(a.decision)}</span>
+        <span style="font-size:10px;color:var(--muted)">${(a.created_at||'').slice(0,10)}</span>
+      </div>
+      ${a.reason ? '<div style="font-size:12px;color:var(--muted)">' + esc(a.reason) + '</div>' : ''}
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">by ${esc(a.approver_role||'—')}</div>
+    </div>`;
+  }).join('');
+}
+
+async function loadBacklog(projectId) {
+  const el = document.getElementById('backlogList');
+  el.innerHTML = '<p style="color:var(--muted)">Loading…</p>';
+  try {
+    const data = await api('GET', '/projects/' + projectId + '/backlog');
+    if (!data.length) { el.innerHTML = '<p style="color:var(--muted)">No backlog items yet.</p>'; return; }
+    const STATUS_COLOR = { backlog: 'var(--muted)', promoted: '#22c55e', rejected: '#ef4444' };
+    el.innerHTML = data.map(item => {
+      const col = STATUS_COLOR[item.status] || 'var(--muted)';
+      return `<div class="data-row">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+          <strong style="font-size:13px">${esc(item.title)}</strong>
+          <span style="margin-left:auto;font-size:11px;font-weight:600;color:${col}">${esc(item.status)}</span>
+          <span style="font-size:10px;color:var(--muted)">${(item.created_at||'').slice(0,10)}</span>
+        </div>
+        ${item.description ? '<div style="font-size:12px;color:var(--muted)">' + esc(item.description) + '</div>' : ''}
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">by ${esc(item.submitted_by||'—')}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = '<p style="color:var(--muted)">Backlog not available.</p>';
+  }
+}
+
+async function loadAuxiliarySpecialist(projectId, role, listId) {
+  const el = document.getElementById(listId);
+  el.innerHTML = '<p style="color:var(--muted)">Loading…</p>';
+  const data = await api('GET', '/auxiliary-agent-outputs?project_id=' + projectId + '&agent_role=' + encodeURIComponent(role));
+  if (!data.length) { el.innerHTML = '<p style="color:var(--muted)">No ' + esc(role) + ' outputs yet.</p>'; return; }
+  const STATUS_COLOR = { pending: '#f59e0b', approved: '#22c55e', rejected: '#ef4444' };
+  el.innerHTML = data.map(p => {
+    const col = STATUS_COLOR[p.status] || 'var(--muted)';
+    const preview = p.content.length > 300 ? esc(p.content.slice(0, 300)) + '…' : esc(p.content);
+    const req = p.related_requirement_ref ? `<span class="req-badge" style="margin-left:6px">${esc(p.related_requirement_ref)}</span>` : '';
+    const target = p.target_core_agent ? `<span style="font-size:11px;color:var(--muted)"> → ${esc(p.target_core_agent)}</span>` : '';
+    return `<div class="data-row">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+        <strong style="color:var(--aux);font-size:13px">${esc(p.agent_role)}</strong>${target}${req}
+        <span style="margin-left:auto;font-size:11px;font-weight:600;color:${col}">${esc(p.status)}</span>
+        <span style="font-size:10px;color:var(--muted)">${(p.created_at || '').slice(0, 10)}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text);line-height:1.5">${preview}</div>
+    </div>`;
   }).join('');
 }
 
 async function loadProposals(projectId) {
   const el = document.getElementById('proposalsList');
+  if (!el) return;
   el.innerHTML = '<p style="color:var(--muted)">Loading…</p>';
   const data = await api('GET', '/auxiliary-agent-outputs?project_id=' + projectId);
   if (!data.length) { el.innerHTML = '<p style="color:var(--muted)">No proposals yet.</p>'; return; }
@@ -914,97 +1029,9 @@ async function loadProposals(projectId) {
   }).join('');
 }
 
-async function loadRequirements(projectId) {
-  const data = await api('GET', '/tasks?project_id=' + projectId); // Placeholder: need real endpoint eventually
-  const el = document.getElementById('requirementList');
-  if (!data.length) { el.innerHTML = '<p style="color:var(--muted)">No requirements yet.</p>'; return; }
-  el.innerHTML = data.map(r =>
-    '<div class="data-row"><strong>' + esc(r.requirement_ref || 'REQ-???') + ': ' + esc(r.title) + '</strong> <span style="color:var(--muted);font-size:11px;">Tier ' + (r.tier || 1) + '</span></div>'
-  ).join('');
-}
-
-async function loadValidations(projectId) {
-  const data = await api('GET', '/projects/' + projectId + '/validations');
-  const el = document.getElementById('validationList');
-  if (!data.length) { el.innerHTML = '<p style="color:var(--muted)">No validations yet.</p>'; return; }
-  el.innerHTML = data.map(v =>
-    '<div class="data-row"><strong>Blueprint #' + v.blueprint_id + '</strong>: <span class="status-badge ' + v.status + '">' + esc(v.status) + '</span>' +
-    (v.findings ? '<pre style="margin-top:8px">' + esc(v.findings) + '</pre>' : '') + '</div>'
-  ).join('');
-}
-
-async function loadExecutionTrace(projectId) {
-  const data = await api('GET', '/projects/' + projectId + '/execution-trace');
-  const el = document.getElementById('executionTraceList');
-  if (!data.length) { el.innerHTML = '<p style="color:var(--muted)">No execution trace entries yet.</p>'; return; }
-  el.innerHTML = data.map(e => {
-    const col = e.error_message ? '#ef4444' : '#22c55e';
-    return `<div class="data-row">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <strong style="font-size:12px;color:var(--accent-h)">${esc(e.agent_role)}</strong>
-        <span style="font-size:12px">${esc(e.action)}</span>
-        ${e.result ? '<span style="font-size:11px;color:' + col + ';margin-left:auto">' + esc(e.result) + '</span>' : ''}
-        <span style="font-size:10px;color:var(--muted)">${(e.timestamp||'').slice(0,19).replace('T',' ')}</span>
-      </div>
-      ${e.error_message ? '<div style="font-size:11px;color:#ef4444">' + esc(e.error_message) + '</div>' : ''}
-    </div>`;
-  }).join('');
-}
-
-async function loadBacklog(projectId) {
-  const data = await api('GET', '/projects/' + projectId + '/backlog');
-  const el = document.getElementById('backlogList');
-  if (!data.length) { el.innerHTML = '<p style="color:var(--muted)">Empty backlog.</p>'; return; }
-  el.innerHTML = data.map(b =>
-    '<div class="data-row"><strong>' + esc(b.title) + '</strong> <span style="color:var(--muted);font-size:11px;">by ' + esc(b.submitted_by) + '</span>' +
-    '<div style="margin-top:4px">' + esc(b.description || '') + '</div></div>'
-  ).join('');
-}
-
-async function loadApprovals(projectId) {
-  const data = await api('GET', '/projects/' + projectId + '/approvals');
-  const el = document.getElementById('approvalList');
-  if (!data.length) { el.innerHTML = '<p style="color:var(--muted)">No approvals yet.</p>'; return; }
-  const DECISION_COLOR = { approved: '#22c55e', rejected: '#ef4444' };
-  el.innerHTML = data.map(a => {
-    const col = DECISION_COLOR[a.decision] || 'var(--muted)';
-    return `<div class="data-row">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <strong style="font-size:13px">${esc(a.entity_type)} #${a.entity_id}</strong>
-        <span style="margin-left:auto;font-size:11px;font-weight:600;color:${col}">${esc(a.decision)}</span>
-        <span style="font-size:10px;color:var(--muted)">${(a.created_at||'').slice(0,10)}</span>
-      </div>
-      ${a.reason ? '<div style="font-size:12px;color:var(--muted)">' + esc(a.reason) + '</div>' : ''}
-      <div style="font-size:11px;color:var(--muted);margin-top:4px">by ${esc(a.approver_role)}</div>
-    </div>`;
-  }).join('');
-}
-
-async function loadAuditTrail(projectId) {
-  const el = document.getElementById('auditTrailList');
-  el.innerHTML = '<p style="color:var(--muted)">Audit trail coming soon.</p>';
-}
-
-async function showAddBacklog() {
-  const pid = activeProjectIdForTabs();
-  if (!pid) return;
-  const title = prompt('Idea title?');
-  if (!title) return;
-  const description = prompt('Description?') || '';
-  try {
-    await api('POST', '/projects/' + pid + '/backlog', { title, description, submitted_by: 'human' });
-    toast('Idea added to backlog');
-    loadBacklog(pid);
-  } catch (e) { toast(e.message, 'err'); }
-}
-
-async function showAddRequirement() {
-  toast('Add requirement via Architect or direct DB write for now.', 'err');
-}
-
 async function showAddBlueprint() {
   const pid = activeProjectIdForTabs();
-  if (!pid) return;
+  if (!pid) { toast('Select a project first', 'err'); return; }
   const title = prompt('Blueprint title?');
   if (!title) return;
   const type = prompt('Type (default prd)?', 'prd') || 'prd';
@@ -1019,7 +1046,7 @@ async function showAddBlueprint() {
 
 async function showAddDecision() {
   const pid = activeProjectIdForTabs();
-  if (!pid) return;
+  if (!pid) { toast('Select a project first', 'err'); return; }
   const title = prompt('Decision title?');
   if (!title) return;
   const content = prompt('Decision content?') || '';
@@ -1033,7 +1060,7 @@ async function showAddDecision() {
 
 async function showAddMemory() {
   const pid = activeProjectIdForTabs();
-  if (!pid) return;
+  if (!pid) { toast('Select a project first', 'err'); return; }
   const key = prompt('Memory key?');
   if (!key) return;
   const value = prompt('Value?') || '';
@@ -1095,7 +1122,6 @@ function renderTasks() {
     return;
   }
 
-  // Toggle class so CSS can hide the project column when filtered to one project
   document.querySelector('.table-wrap').classList.toggle('project-selected', projectFilter !== 'all');
 
   tbody.innerHTML = tasks.map(t => {
@@ -1107,7 +1133,7 @@ function renderTasks() {
     const desc     = t.description ? `<div class="task-desc">${esc(t.description)}</div>` : '';
     const notes    = t.notes       ? `<div class="task-notes">📝 ${esc(t.notes)}</div>` : '';
     const doneBtn  = (t.status !== 'done' && t.status !== 'failed')
-      ? `<button class="btn btn-completed" onclick="completeTask('${t.id}')">✓ Completed</button>` : '';
+      ? `<button class="btn btn-completed" onclick="completeTask('${t.id}')">✓ Done</button>` : '';
     const typeKey  = t.action_type || '';
     const typeCls  = KNOWN_TYPES.includes(typeKey) ? typeKey : 'other';
     const typeHTML = typeKey
@@ -1155,8 +1181,8 @@ function openModal(id) {
     const t = allTasks.find(x => String(x.id) === String(id));
     if (!t) return;
     document.getElementById('f-title').value = t.title;
-    document.getElementById('f-desc').value  = t.description;
-    document.getElementById('f-notes').value = t.notes;
+    document.getElementById('f-desc').value  = t.description || '';
+    document.getElementById('f-notes').value = t.notes || '';
     selectPri(t.priority);
   } else {
     document.getElementById('f-title').value = '';
@@ -1215,7 +1241,7 @@ async function saveTask() {
 }
 
 async function deleteTask(id) {
-  const t = allTasks.find(x => x.id === id);
+  const t = allTasks.find(x => String(x.id) === String(id));
   if (!confirm(`Delete "${t?.title}"?`)) return;
   try {
     await api('DELETE', '/tasks/' + id);
