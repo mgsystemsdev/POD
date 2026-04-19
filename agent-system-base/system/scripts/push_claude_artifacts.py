@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """
-Push per-repo Claude artifacts into the task-dashboard SQLite DB and import tasks.
+Push per-repo Claude artifacts into the task-dashboard DB and import tasks.
 
-Writes:
+**Note:** Railway Postgres is now the source of truth. Prefer editing via the
+dashboard / ChatGPT / API, then `agents pull`. Push is for initial seed /
+migration only.
 
-  - .claude/project.md → ``blueprints`` (``project_md``) — **Blueprints** tab
-  - .claude/decisions.md → ``decisions`` (file-mirror upsert) — **Decisions** tab
-  - .claude/sessions.md or .claude/session.md → ``session_logs`` (file-mirror upsert) — **Session Log** tab
-  - .claude/memory/MEMORY.md → ``memory`` key ``mirror/memory/MEMORY.md`` — **Memory** tab
+Writes (new 3-folder layout; falls back to legacy flat layout if files are missing):
+
+  - .claude/pipeline/blueprints.md   (legacy: .claude/project.md)       → **Blueprints**
+  - .claude/governance/decisions.md  (legacy: .claude/decisions.md)     → **Decisions**
+  - .claude/pipeline/session_log.md  (legacy: .claude/session.md)       → **Session Log**
+  - .claude/governance/memory.md     (legacy: .claude/memory/MEMORY.md) → **Memory**
 
 **Global run (same idea as ``task_worker.py``):** with no ``--slug``, reads
 ``~/agents/agent-services/config/projects_index.json``, processes every **active**
@@ -147,19 +151,47 @@ def _sync_markdown_for_project(
         )
         results.append((path.name + " → session_logs", kind, msg))
 
-    _sync_blueprint(claude_dir / "project.md", PROJECT_MD_TYPE, PROJECT_MD_TITLE)
-    _sync_decisions_file(claude_dir / "decisions.md")
+    def _first_existing(*candidates: Path) -> Path:
+        """Return the first path that exists; else return the first candidate (for error msg)."""
+        for p in candidates:
+            if p.is_file():
+                return p
+        return candidates[0]
 
-    session_file = claude_dir / "sessions.md"
-    if not session_file.is_file():
-        session_file = claude_dir / "session.md"
-    _sync_session_file(session_file)
+    # Blueprints: new .claude/pipeline/blueprints.md, fallback to legacy .claude/project.md
+    _sync_blueprint(
+        _first_existing(claude_dir / "pipeline" / "blueprints.md", claude_dir / "project.md"),
+        PROJECT_MD_TYPE,
+        PROJECT_MD_TITLE,
+    )
 
-    memory_dir = claude_dir / "memory"
-    for label, kind, msg in claude_artifact_sync.sync_claude_memory_folder(
-        project_id, memory_dir, dry_run=dry_run
-    ):
+    # Decisions: new .claude/governance/decisions.md, fallback to legacy .claude/decisions.md
+    _sync_decisions_file(
+        _first_existing(claude_dir / "governance" / "decisions.md", claude_dir / "decisions.md")
+    )
+
+    # Session Log: new .claude/pipeline/session_log.md, fallback to legacy .claude/session(s).md
+    _sync_session_file(
+        _first_existing(
+            claude_dir / "pipeline" / "session_log.md",
+            claude_dir / "sessions.md",
+            claude_dir / "session.md",
+        )
+    )
+
+    # Memory: new .claude/governance/memory.md (single file) or legacy .claude/memory/MEMORY.md folder
+    new_memory = claude_dir / "governance" / "memory.md"
+    if new_memory.is_file():
+        label, kind, msg = claude_artifact_sync.sync_claude_memory_file(
+            project_id, new_memory, dry_run=dry_run
+        )
         results.append((label, kind, msg))
+    else:
+        memory_dir = claude_dir / "memory"
+        for label, kind, msg in claude_artifact_sync.sync_claude_memory_folder(
+            project_id, memory_dir, dry_run=dry_run
+        ):
+            results.append((label, kind, msg))
 
     for name, kind, msg in results:
         print(f"  {name}: [{kind}] {msg}")

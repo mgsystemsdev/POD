@@ -133,6 +133,52 @@ def upsert_session_file_from_disk(
         return "error", f"{type(exc).__name__}: {exc}"
 
 
+def sync_claude_memory_file(
+    project_id: int,
+    file_path: Path,
+    *,
+    dry_run: bool,
+) -> tuple[str, str, str]:
+    """
+    Sync the new single-file memory layout: ``.claude/governance/memory.md`` →
+    one ``memory`` row (key ``mirror/memory/MEMORY.md``). Also prunes any other
+    ``mirror/memory/*`` rows and legacy ``mirror_claude_*`` keys.
+
+    Returns ``(label, kind, msg)``.
+    """
+    import memory_service  # noqa: PLC0415
+
+    label = f"memory.md → {MEMORY_FOLDER_SYNC_PREFIX}{MEMORY_DASHBOARD_FILE}"
+
+    if not file_path.is_file():
+        return (label, "skipped", f"no {file_path}")
+    try:
+        content = file_path.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        return (label, "error", f"read failed: {exc}")
+    if not content:
+        return (label, "skipped", f"{file_path} is empty")
+
+    if dry_run:
+        return (
+            label,
+            "dry-run",
+            f"would set {MEMORY_FOLDER_SYNC_PREFIX}{MEMORY_DASHBOARD_FILE} ({len(content)} chars)",
+        )
+
+    # Clean up legacy keys + any stale mirror/memory/* rows (same invariant as folder sync)
+    for lk in LEGACY_MEMORY_KEYS:
+        memory_service.delete_memory(project_id, lk)
+    memory_service.delete_keys_with_prefix(project_id, MEMORY_FOLDER_SYNC_PREFIX)
+
+    key = f"{MEMORY_FOLDER_SYNC_PREFIX}{MEMORY_DASHBOARD_FILE}"
+    try:
+        memory_service.upsert_memory(project_id, key, content)
+        return (label, "updated", f"memory tab ← {key!r}")
+    except Exception as exc:
+        return (label, "error", f"{type(exc).__name__}: {exc}")
+
+
 def sync_claude_memory_folder(
     project_id: int,
     memory_dir: Path,
