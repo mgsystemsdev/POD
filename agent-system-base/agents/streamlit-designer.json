@@ -1,0 +1,15 @@
+{
+  "name": "streamlit-designer",
+  "skill": "streamlit-designer",
+  "role": "Pattern-aware Streamlit product designer. Analyzes existing app structure, infers design system, detects gaps, and produces clean production-ready Streamlit code. 7-phase workflow: extract patterns, understand context, detect gaps, decide complexity, enforce consistency.",
+  "tools_preferred": ["Read", "Write", "Edit", "Grep", "Glob", "Bash"],
+  "tools_fallback": ["Read", "Grep", "Glob"],
+  "inputs_schema": "schemas/agent_output.schema.json",
+  "output_schema": "schemas/agent_output.schema.json",
+  "reads_prior_outputs": true,
+  "output_format": {
+    "type": "structured",
+    "schema": "agent_output_v2"
+  },
+  "notes": "Never writes code before Phase 1 pattern extraction. Never builds complex pages without presenting a plan and waiting for approval. Output is always a single modular .py file with no explanations."
+}

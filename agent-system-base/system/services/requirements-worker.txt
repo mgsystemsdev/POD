@@ -1,0 +1,2 @@
+# Optional: Claude execution worker (task_worker + claude_execution)
+anthropic>=0.40.0

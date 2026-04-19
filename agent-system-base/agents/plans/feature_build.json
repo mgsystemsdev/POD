@@ -1,0 +1,61 @@
+{
+  "plan_id": "feature_build",
+  "version": 1,
+  "description": "Standard feature build: context → research → create → merge. Add a 'review' agent to agents/ to enable the review step.",
+  "goal_template": "{goal}",
+  "variables": {
+    "goal": "string"
+  },
+  "steps": [
+    {
+      "step_id": "s1_context",
+      "agent": "context",
+      "depends_on": [],
+      "parallel_group": 1,
+      "inputs": {
+        "from_run": [],
+        "slots": ["goal"]
+      },
+      "outputs_to": ["runs/{{run_id}}/context.output.json"]
+    },
+    {
+      "step_id": "s2_research",
+      "agent": "research",
+      "depends_on": ["s1_context"],
+      "parallel_group": 2,
+      "inputs": {
+        "from_run": ["context.output.json"],
+        "slots": ["goal"]
+      },
+      "outputs_to": ["runs/{{run_id}}/research.output.json"]
+    },
+    {
+      "step_id": "s3_create",
+      "agent": "create",
+      "depends_on": ["s2_research"],
+      "parallel_group": 3,
+      "inputs": {
+        "from_run": ["context.output.json", "research.output.json"],
+        "slots": ["goal"]
+      },
+      "outputs_to": ["runs/{{run_id}}/create.output.json"]
+    },
+    {
+      "step_id": "s4_merge",
+      "agent": "merge",
+      "depends_on": ["s3_create"],
+      "parallel_group": 4,
+      "output_file": "merged.json",
+      "inputs": {
+        "from_run": [
+          "context.output.json",
+          "research.output.json",
+          "create.output.json"
+        ],
+        "slots": ["goal"]
+      },
+      "outputs_to": ["runs/{{run_id}}/merged.json"],
+      "builtin_merge": true
+    }
+  ]
+}

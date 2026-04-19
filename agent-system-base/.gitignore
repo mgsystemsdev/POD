@@ -1,0 +1,5 @@
+runs/
+system/db/database.sqlite
+__pycache__/
+*.pyc
+.env

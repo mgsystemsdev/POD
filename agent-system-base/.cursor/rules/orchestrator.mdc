@@ -1,0 +1,36 @@
+---
+description: Rules for editing orchestrator Python files
+globs: ["orchestrator/**/*.py"]
+---
+
+# Orchestrator Editing Rules
+
+## Schema Contracts
+- Every agent output must validate against `schemas/agent_output_v2.schema.json`
+- Never change the `agent_output_v2` envelope shape without updating the schema file
+- `failure_envelope_v2` shape must stay consistent with `validate_agent_output_v2` in controller.py
+
+## Error Handling
+- All API errors must be caught and emitted as `failure_envelope_v2` — never let exceptions propagate silently
+- Every step gets one retry before failure
+- Failed non-critical steps must pass failure context to dependent steps — do not skip context passing
+
+## Skill Loader
+- When `agents/<agent>.json` has a `"skill"` field, the system prompt must include that skill's SKILL.md body
+- Strip frontmatter before injecting skill content
+- Skill content goes AFTER the base system prompt, not before
+
+## Correlation IDs
+- Every run must have a `correlation_id` (UUID) in `RunState`
+- Pass `correlation_id` to every agent call via system prompt context
+- Log `correlation_id` in every log entry
+
+## File Safety
+- Never write outside `runs/ephemeral/` during plan execution
+- task_worker.py has `safe_path()` for script actions — use it for any file operations in handlers
+
+## Adding New Action Types
+- Add handler function named `handle_<action_type>`
+- Register in `HANDLERS` dict
+- Document in `config/task_schema.json` action_type enum
+- Add example to `config/task_examples.json`

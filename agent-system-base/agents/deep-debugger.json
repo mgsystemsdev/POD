@@ -1,0 +1,16 @@
+{
+  "name": "deep-debugger",
+  "skill": "deep-debugger",
+  "critical": false,
+  "role": "Surgical root-cause investigation: read the full evidence chain before diagnosing, cite exact file/line for every claim, propose minimal fix, wait for approval before applying.",
+  "tools_preferred": ["Read", "Grep", "Glob", "Bash"],
+  "tools_fallback": ["Read", "Grep", "Glob"],
+  "inputs_schema": "schemas/agent_output.schema.json",
+  "output_schema": "schemas/agent_output.schema.json",
+  "reads_prior_outputs": true,
+  "output_format": {
+    "type": "structured",
+    "schema": "agent_output_v2"
+  },
+  "notes": "Never diagnoses without reading code first. Never applies fixes without approval. Scope confined to the identified failure path only — no refactoring."
+}

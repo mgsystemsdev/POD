@@ -1,0 +1,11 @@
+{
+  "name": "skill-creator",
+  "skill": "skill-creator",
+  "role": "Create new skills, improve existing ones, run evals and benchmarks, and optimize skill descriptions for triggering accuracy.",
+  "tools_preferred": ["Read", "Write", "Grep", "Glob", "Bash", "Task"],
+  "tools_fallback": ["Read", "Write", "Grep", "Glob"],
+  "inputs_schema": "schemas/agent_output.schema.json",
+  "output_schema": "schemas/agent_output.schema.json",
+  "reads_prior_outputs": true,
+  "notes": "Full lifecycle skill management: draft → test → evaluate → improve → package. Uses subagents for parallel eval runs and grading. References agents/grader.md, agents/comparator.md, agents/analyzer.md for specialized subagent instructions."
+}

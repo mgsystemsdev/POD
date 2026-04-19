@@ -1,0 +1,11 @@
+{
+  "name": "system_base_manager",
+  "skill": "system_base_manager",
+  "role": "Audit ~/.claude/ and agent-system-base. Detect gaps, validate health, track audit history, and create or retire agents based on real patterns.",
+  "tools_preferred": ["Read", "Grep", "Glob", "Write"],
+  "tools_fallback": ["Read", "Grep", "Glob"],
+  "inputs_schema": "schemas/agent_output.schema.json",
+  "output_schema": "schemas/agent_output.schema.json",
+  "reads_prior_outputs": false,
+  "notes": "Never touches project code. Never creates agents without confirmation. Always syncs to agent-system-base. Saves audit snapshots to ~/.claude/system-audits/."
+}

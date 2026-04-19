@@ -1,0 +1,11 @@
+{
+  "name": "seed-project",
+  "skill": "seed-project",
+  "role": "Seed a new project with global orchestrator tools, dashboard, and scripts from agent-system-base.",
+  "tools_preferred": ["Bash", "Read", "Glob"],
+  "tools_fallback": ["Read", "Glob"],
+  "inputs_schema": "schemas/agent_output.schema.json",
+  "output_schema": "schemas/agent_output.schema.json",
+  "reads_prior_outputs": false,
+  "notes": "Confirms target directory before running init.sh. Reports exactly what was created. Does not modify existing project code."
+}

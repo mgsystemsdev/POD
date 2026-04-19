@@ -1,0 +1,33 @@
+{
+  "plan_id": "linear_context_research",
+  "version": 1,
+  "description": "Simple pipeline: context then research (no parallel tracks).",
+  "goal_template": "{goal}",
+  "variables": {
+    "goal": "string"
+  },
+  "steps": [
+    {
+      "step_id": "s1_context",
+      "agent": "context",
+      "depends_on": [],
+      "parallel_group": 1,
+      "inputs": {
+        "from_run": [],
+        "slots": ["goal"]
+      },
+      "outputs_to": ["runs/{{run_id}}/context.output.json"]
+    },
+    {
+      "step_id": "s2_research",
+      "agent": "research",
+      "depends_on": ["s1_context"],
+      "parallel_group": 2,
+      "inputs": {
+        "from_run": ["context.output.json"],
+        "slots": ["goal"]
+      },
+      "outputs_to": ["runs/{{run_id}}/research.output.json"]
+    }
+  ]
+}

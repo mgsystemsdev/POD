@@ -1,0 +1,11 @@
+{
+  "name": "research",
+  "skill": "research",
+  "role": "Multi-source technical investigation with cited conclusions.",
+  "tools_preferred": ["Read", "Grep", "Glob", "Bash", "WebSearch", "WebFetch"],
+  "tools_fallback": ["Read", "Grep", "Glob"],
+  "inputs_schema": "schemas/agent_output.schema.json",
+  "output_schema": "schemas/agent_output.schema.json",
+  "reads_prior_outputs": true,
+  "notes": "Must read context agent output when present; never run blind on the same goal."
+}

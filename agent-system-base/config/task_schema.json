@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Schema for tasks.json in any registered project",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["task_id", "title", "status", "priority", "action_type"],
+    "properties": {
+      "task_id":     { "type": "string", "description": "Unique ID scoped to project, e.g. dmrb-001" },
+      "title":       { "type": "string" },
+      "description": { "type": "string" },
+      "priority":    { "type": "integer", "description": "1 = highest priority" },
+      "status": {
+        "type": "string",
+        "enum": ["pending", "in_progress", "blocked", "complete"],
+        "description": "Worker sets to 'complete' on success, 'blocked' on failure"
+      },
+      "action_type": {
+        "type": "string",
+        "enum": ["log_only", "run_script", "generate_file", "claude_execute", "run_plan"],
+        "description": "Determines which handler executes this task"
+      },
+      "action_payload": {
+        "type": "object",
+        "description": "Handler-specific inputs — shape depends on action_type"
+      },
+      "correlation_id": {
+        "type": "string",
+        "description": "Optional UUID grouping all tasks from one planning session"
+      },
+      "created_at":  { "type": "string", "format": "date-time" },
+      "updated_at":  { "type": "string", "format": "date-time" }
+    }
+  }
+}

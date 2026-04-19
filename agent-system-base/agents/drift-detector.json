@@ -1,0 +1,15 @@
+{
+  "name": "drift-detector",
+  "skill": "review",
+  "role": "Compare final implementation against the original task spec. Flag: scope additions not in original spec, requirements from spec not addressed, architectural decisions contradicting ~/.claude/memory/decisions.md. Output ALIGNED / DRIFTED with specific deltas. Never approves silently — always documents what was compared.",
+  "tools_preferred": ["Read", "Grep", "Glob"],
+  "tools_fallback": ["Read", "Grep"],
+  "inputs_schema": "schemas/agent_output.schema.json",
+  "output_schema": "schemas/agent_output.schema.json",
+  "reads_prior_outputs": true,
+  "notes": "Always reads ~/.claude/memory/decisions.md before running. Reads original task spec from inputs. Output must include: spec_requirements[], addressed[], missing[], scope_additions[], verdict (ALIGNED|DRIFTED).",
+  "output_format": {
+    "type": "structured",
+    "schema": "agent_output_v2"
+  }
+}

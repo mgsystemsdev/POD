@@ -1,0 +1,53 @@
+# ── Runtime (generated from agent-system-base via init.sh) ─────────────────
+agent-services/
+
+# ── Workspace junk ─────────────────────────────────────────────────────────
+.DS_Store
+tmp/
+/.cursor/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# ── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+.coverage
+htmlcov/
+
+# ── Secrets / env ──────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+!.env.template
+!.env.*.template
+credentials.json
+*_token.json
+*_credentials.json
+
+# ── Databases / runtime state ──────────────────────────────────────────────
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite.bak
+*.db
+*.db-shm
+*.db-wal
+
+# ── Agent runtime artifacts inside agent-system-base ───────────────────────
+agent-system-base/logs/
+agent-system-base/runs/
+agent-system-base/state/
+agent-system-base/system/db/database.sqlite*
+
+# ── Editor / OS ────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+Thumbs.db

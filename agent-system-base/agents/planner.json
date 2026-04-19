@@ -1,0 +1,8 @@
+{
+  "name": "planner",
+  "description": "Decomposes goals into concrete task lists and writes them to ~/.claude/tasks.json with the correct schema. Presents the plan for approval before anything runs.",
+  "skill": "planner",
+  "tools_preferred": ["Read", "Write", "Edit"],
+  "critical": false,
+  "output_format": "agent_output_v2"
+}

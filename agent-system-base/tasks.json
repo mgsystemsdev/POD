@@ -1,0 +1,112 @@
+{
+  "project": "/Users/miguelgonzalez/agents/agent-system-base",
+  "kind": "execution_plan",
+  "re_evaluated": "2026-03-30",
+  "feature": "claude_execution_worker",
+  "implementation_status": "complete",
+  "summary": "SQLite-backed task_worker claims one pending task per run, loads project context via context_loader, builds prompts with claude_prompts, calls Anthropic Messages API with retries via claude_execution.run_messages_with_retry, persists assistant text to runs.agent on success (run_service), sets task done; on failure run failed + task blocked. No direct db/sqlite3 in task_worker.",
+  "architecture": {
+    "worker_entry": "system/services/task_worker.py",
+    "boundary_modules": [
+      "task_service",
+      "run_service",
+      "context_loader",
+      "claude_prompts",
+      "claude_execution"
+    ],
+    "forbidden_in_worker": ["sqlite3", "db.connect", "direct SQL"],
+    "invariants": [
+      "At most one task claimed per process (claim_next_pending)",
+      "Run lifecycle: pending → running → success|failed",
+      "Success output serialized into runs.agent via run_service.update_run(..., output=...)"
+    ]
+  },
+  "dependencies": {
+    "pip": ["anthropic>=0.40.0 (see system/services/requirements-worker.txt)"],
+    "environment": [
+      "ANTHROPIC_API_KEY (required)",
+      "ANTHROPIC_MODEL (optional)",
+      "CLAUDE_MAX_TOKENS",
+      "CLAUDE_TIMEOUT_S",
+      "CLAUDE_MAX_RETRIES"
+    ]
+  },
+  "test_modules": [
+    "system/services/test_claude_execution.py",
+    "system/services/test_claude_prompts.py",
+    "system/services/test_task_worker.py"
+  ],
+  "execution_order": [
+    {
+      "task_id": "asb-claude-worker-001",
+      "title": "claude_execution",
+      "status": "completed",
+      "as_built": {
+        "primary": "system/services/claude_execution.py",
+        "exports": ["run_messages", "run_messages_with_retry", "_retryable (internal)"],
+        "tests": "system/services/test_claude_execution.py"
+      }
+    },
+    {
+      "task_id": "asb-claude-worker-002",
+      "title": "prompts",
+      "status": "completed",
+      "as_built": {
+        "primary": "system/services/claude_prompts.py",
+        "exports": ["build_prompts(task, ctx) -> tuple[str, str]"],
+        "tests": "system/services/test_claude_prompts.py"
+      }
+    },
+    {
+      "task_id": "asb-claude-worker-003",
+      "title": "retry",
+      "status": "completed",
+      "as_built": {
+        "location": "system/services/claude_execution.py::run_messages_with_retry",
+        "behavior": "Retries on transient API errors (429, 5xx, connection/timeout); exponential backoff with random jitter; no retry on missing API key"
+      }
+    },
+    {
+      "task_id": "asb-claude-worker-004",
+      "title": "worker integration",
+      "status": "completed",
+      "as_built": {
+        "primary": "system/services/task_worker.py",
+        "flow": "_execute_claude → load_project_context → build_prompts → run_messages_with_retry"
+      }
+    },
+    {
+      "task_id": "asb-claude-worker-005",
+      "title": "tests",
+      "status": "completed",
+      "as_built": {
+        "primary": "system/services/test_task_worker.py",
+        "notes": "Patches db.connect for shared temp SQLite; mocks claude_execution.run_messages_with_retry; success + failure(blocked) cases"
+      }
+    },
+    {
+      "task_id": "asb-claude-worker-006",
+      "title": "docs",
+      "status": "completed",
+      "as_built": {
+        "docs": "system/services/README_task_worker.md",
+        "requirements": "system/services/requirements-worker.txt"
+      }
+    }
+  ],
+  "file_inventory": [
+    "system/services/claude_execution.py",
+    "system/services/claude_prompts.py",
+    "system/services/task_worker.py",
+    "system/services/test_claude_execution.py",
+    "system/services/test_claude_prompts.py",
+    "system/services/test_task_worker.py",
+    "system/services/README_task_worker.md",
+    "system/services/requirements-worker.txt"
+  ],
+  "verification": {
+    "command": "cd system/services && python3 -m unittest discover -v -p 'test_*.py'",
+    "note": "Run after dependency install; claude worker tests mock API"
+  },
+  "note": "Repository execution plan / as-built record (not ~/.claude/tasks.json). Global queue for scheduled work remains ~/.claude/tasks.json."
+}

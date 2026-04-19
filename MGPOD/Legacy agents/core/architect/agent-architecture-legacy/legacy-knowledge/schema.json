@@ -1,0 +1,123 @@
+{
+  "schema_version": "1.0",
+  "project": {
+    "name": "",
+    "type": "",
+    "problem": "",
+    "owner": "Miguel González",
+    "primary_users": [],
+    "success_condition_v1": "",
+    "status": "draft"
+  },
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "name": "",
+      "trigger": "",
+      "input": {
+        "description": "",
+        "format": "",
+        "valid_values": "",
+        "invalid_values": ""
+      },
+      "output": {
+        "description": "",
+        "format": "",
+        "success_looks_like": ""
+      },
+      "constraints": {
+        "time": "",
+        "volume": "",
+        "accuracy": "",
+        "dependencies": []
+      },
+      "failure_path": {
+        "retry_logic": "",
+        "error_state": "",
+        "fallback": "",
+        "notification": ""
+      },
+      "done_when": "",
+      "mvp": true
+    }
+  ],
+  "data_model": {
+    "entities": [
+      {
+        "name": "",
+        "table": "",
+        "fields": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "required": true,
+            "primary_key": true,
+            "notes": "auto-increment"
+          },
+          {
+            "name": "created_at",
+            "type": "TEXT",
+            "required": true,
+            "notes": "ISO timestamp"
+          },
+          {
+            "name": "updated_at",
+            "type": "TEXT",
+            "required": true,
+            "notes": "ISO timestamp"
+          }
+        ],
+        "status_values": [],
+        "allowed_transitions": [],
+        "indexes": []
+      }
+    ],
+    "relationships": []
+  },
+  "workflows": [
+    {
+      "name": "",
+      "entry_point": "",
+      "steps": [],
+      "exit_condition": "",
+      "state_transitions": [],
+      "edge_cases": []
+    }
+  ],
+  "architecture": {
+    "system_type": "",
+    "layers": [],
+    "components": [],
+    "communication": "",
+    "external_dependencies": [],
+    "constraints": [],
+    "forbidden": []
+  },
+  "technical_specs": {
+    "business_rules": [],
+    "validation": [],
+    "authentication": "none",
+    "performance_targets": [],
+    "error_format": {
+      "fields": ["error", "message", "detail"]
+    },
+    "logging": []
+  },
+  "api_contracts": {
+    "base_url": "http://127.0.0.1:8765",
+    "endpoints": []
+  },
+  "file_structure": {
+    "root": "",
+    "claude_dir": ".claude/",
+    "key_files": []
+  },
+  "mvp": {
+    "in_scope": [],
+    "deferred_to_v2": [],
+    "out_of_scope": [],
+    "success_condition": "",
+    "known_risks": []
+  },
+  "open_assumptions": []
+}

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dmrb.local/schemas/agent_output.json",
+  "title": "DMRB Agent Output",
+  "description": "Mandatory envelope for every agent step in the orchestrator.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "agent",
+    "goal",
+    "inputs",
+    "actions",
+    "outputs",
+    "decisions",
+    "artifacts",
+    "next_steps"
+  ],
+  "properties": {
+    "agent": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Agent identifier (matches agents/<name>.json name)."
+    },
+    "goal": {
+      "type": "string",
+      "description": "Task this agent executed."
+    },
+    "inputs": {
+      "type": "array",
+      "description": "References or summaries of inputs (paths, URIs, prior run fragments).",
+      "items": { "type": "string" }
+    },
+    "actions": {
+      "type": "array",
+      "description": "Steps taken (tool names, file paths touched, commands).",
+      "items": { "type": "string" }
+    },
+    "outputs": {
+      "type": "array",
+      "description": "Concrete results (snippets, conclusions, metrics).",
+      "items": { "type": "string" }
+    },
+    "decisions": {
+      "type": "array",
+      "description": "Explicit choices, tradeoffs, or logged errors.",
+      "items": { "type": "string" }
+    },
+    "artifacts": {
+      "type": "array",
+      "description": "Written paths (repo-relative preferred).",
+      "items": { "type": "string" }
+    },
+    "next_steps": {
+      "type": "array",
+      "description": "Follow-ups for humans or the next agent.",
+      "items": { "type": "string" }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Optional orchestrator metadata (status, tool fallbacks).",
+      "additionalProperties": true
+    }
+  }
+}

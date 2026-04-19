@@ -1,0 +1,38 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-04-05",
+  "projects": [
+    {
+      "project_id": "dmrb",
+      "project_name": "DMRB Production",
+      "project_path": "/Users/miguelgonzalez/Projects/Sand box/DRMB_PROD",
+      "type": "sandbox",
+      "status": "active",
+      "registered_on": "2026-03-20"
+    },
+    {
+      "project_id": "dmrb-legacy",
+      "project_name": "DMRB Legacy (Streamlit)",
+      "project_path": "/Users/miguelgonzalez/Projects/Sand box/DRMB_PROD/dmrb/dmrb-legacy",
+      "type": "sandbox",
+      "status": "active",
+      "registered_on": "2026-04-05"
+    },
+    {
+      "project_id": "quick-agent-job",
+      "project_name": "Quick Agent Job",
+      "project_path": "/Users/miguelgonzalez/Projects/Sand box/quick agent job",
+      "type": "sandbox",
+      "status": "inactive",
+      "registered_on": "2026-04-04"
+    },
+    {
+      "project_id": "agent-system-base",
+      "project_name": "Agent System Base",
+      "project_path": "/Users/miguelgonzalez/agents/agent-system-base",
+      "type": "system",
+      "status": "inactive",
+      "registered_on": "2026-04-04"
+    }
+  ]
+}

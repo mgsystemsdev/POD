@@ -1,0 +1,61 @@
+{
+  "plan_id": "review_wave",
+  "version": 1,
+  "description": "Mandatory hardening gate: devil-advocate + security-reviewer + drift-detector run in parallel, then merge. A BLOCK from any agent cancels output and generates fix tasks.",
+  "goal_template": "{goal}",
+  "variables": {
+    "goal": "string"
+  },
+  "steps": [
+    {
+      "step_id": "s1_devil_advocate",
+      "agent": "devil-advocate",
+      "depends_on": [],
+      "parallel_group": 1,
+      "inputs": {
+        "from_run": [],
+        "slots": ["goal"]
+      },
+      "outputs_to": ["runs/{{run_id}}/devil-advocate.output.json"]
+    },
+    {
+      "step_id": "s1_security_reviewer",
+      "agent": "security-reviewer",
+      "depends_on": [],
+      "parallel_group": 1,
+      "inputs": {
+        "from_run": [],
+        "slots": ["goal"]
+      },
+      "outputs_to": ["runs/{{run_id}}/security-reviewer.output.json"]
+    },
+    {
+      "step_id": "s1_drift_detector",
+      "agent": "drift-detector",
+      "depends_on": [],
+      "parallel_group": 1,
+      "inputs": {
+        "from_run": [],
+        "slots": ["goal"]
+      },
+      "outputs_to": ["runs/{{run_id}}/drift-detector.output.json"]
+    },
+    {
+      "step_id": "s2_merge",
+      "agent": "merge",
+      "depends_on": ["s1_devil_advocate", "s1_security_reviewer", "s1_drift_detector"],
+      "parallel_group": 2,
+      "output_file": "review_merged.json",
+      "inputs": {
+        "from_run": [
+          "devil-advocate.output.json",
+          "security-reviewer.output.json",
+          "drift-detector.output.json"
+        ],
+        "slots": ["goal"]
+      },
+      "outputs_to": ["runs/{{run_id}}/review_merged.json"],
+      "builtin_merge": true
+    }
+  ]
+}

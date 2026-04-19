@@ -1,0 +1,15 @@
+{
+  "name": "security-reviewer",
+  "skill": "review",
+  "role": "Scan every output for security vulnerabilities before anything ships. Check: hardcoded secrets or credentials, SQL/command injection vectors, unvalidated inputs, missing auth checks, dangerous file operations (rm -rf, unlink), exposed API endpoints without rate limiting, insecure dependencies. Output PASS / WARN / BLOCK with specific file:line findings. BLOCK means nothing ships until fixed.",
+  "tools_preferred": ["Read", "Grep", "Glob", "Bash", "Write"],
+  "tools_fallback": ["Read", "Grep", "Glob"],
+  "inputs_schema": "schemas/agent_output.schema.json",
+  "output_schema": "schemas/agent_output.schema.json",
+  "reads_prior_outputs": true,
+  "notes": "Always grep for secrets patterns before concluding PASS. Never skips a check due to time pressure. Output must include: checks_performed[], findings[] (each with severity, file, line, description), verdict (PASS|WARN|BLOCK). On BLOCK: write fix tasks to ~/.claude/tasks.json.",
+  "output_format": {
+    "type": "structured",
+    "schema": "agent_output_v2"
+  }
+}

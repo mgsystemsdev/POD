@@ -1,0 +1,11 @@
+# System layout
+
+**db** — SQLite database file, versioned SQL migrations under `db/migrations/`, and any local DB artifacts. This is the durable store for projects, tasks, run history, and schema migration records consumed by services.
+
+**services** — Shared Python modules that open the database, run migrations, and encapsulate backend behavior (for example `db.py` for connections only). Keep orchestration and API glue out of here unless it is clearly a reusable service.
+
+**audit** — Append-only or read-heavy audit trails, decision logs, and compliance-oriented exports that should stay separate from the primary OLTP tables. Use this when you need a clear boundary between operational data and reviewable history.
+
+**export** — Generated bundles, snapshots, and handoff files meant for humans or downstream tools (CSV dumps, report artifacts, scheduled exports). Nothing here should be required for the runtime to start.
+
+**dashboard** — Static assets and small local servers for monitoring and visualization (HTML, scripts). This layer reads from services or export outputs; it should not become the source of truth for business data.

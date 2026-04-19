@@ -1,0 +1,11 @@
+{
+  "name": "create",
+  "skill": "create",
+  "role": "Produce reusable skills, prompts, or small automation artifacts.",
+  "tools_preferred": ["Read", "Write", "Grep", "Glob", "Bash"],
+  "tools_fallback": ["Read", "Grep", "Glob"],
+  "inputs_schema": "schemas/agent_output.schema.json",
+  "output_schema": "schemas/agent_output.schema.json",
+  "reads_prior_outputs": true,
+  "notes": "Uses research/context outputs as constraints for new artifacts."
+}

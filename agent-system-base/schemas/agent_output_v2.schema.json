@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dmrb.local/schemas/agent_output_v2.json",
+  "title": "Agent Output v2",
+  "description": "Documentation mirror; runtime validation is orchestrator.models.validate_agent_output_v2",
+  "type": "object",
+  "required": [
+    "agent",
+    "goal",
+    "status",
+    "inputs",
+    "actions",
+    "outputs",
+    "decisions",
+    "artifacts",
+    "next_steps",
+    "meta"
+  ],
+  "properties": {
+    "agent": { "type": "string", "minLength": 1 },
+    "goal": { "type": "string" },
+    "status": { "type": "string", "enum": ["success", "failure"] },
+    "inputs": { "type": "array", "items": { "type": "string" } },
+    "actions": { "type": "array", "items": { "type": "string" } },
+    "outputs": { "type": "array", "items": { "type": "string" } },
+    "decisions": { "type": "array", "items": { "type": "string" } },
+    "artifacts": { "type": "array", "items": { "type": "string" } },
+    "next_steps": { "type": "array", "items": { "type": "string" } },
+    "sources_checked": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Required for agent research on success"
+    },
+    "docs_used": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Required for agent context on success"
+    },
+    "meta": {
+      "type": "object",
+      "required": ["run_id", "step_id", "schema_version", "agent", "timestamp"],
+      "properties": {
+        "run_id": { "type": "string" },
+        "step_id": { "type": "string" },
+        "schema_version": { "const": "2" },
+        "agent": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "conflicts": {
+      "type": "array",
+      "description": "merged.json only",
+      "items": {
+        "type": "object",
+        "required": ["type", "agents", "reason", "resolution"],
+        "properties": {
+          "type": { "type": "string" },
+          "agents": { "type": "array", "items": { "type": "string" } },
+          "reason": { "type": "string" },
+          "resolution": { "type": ["string", "null"] }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,13 @@
+{
+  "name": "merge",
+  "skill": "swarm",
+  "critical": true,
+  "role": "Consolidate parallel agent JSON outputs into one merged envelope.",
+  "tools_preferred": ["Read", "Write", "Grep", "Glob"],
+  "tools_fallback": ["Read", "Grep", "Glob"],
+  "inputs_schema": "schemas/agent_output.schema.json",
+  "output_schema": "schemas/agent_output.schema.json",
+  "reads_prior_outputs": true,
+  "executor_hint": "Often executed by orchestrator builtin merge.py after human or simulate steps.",
+  "notes": "Single canonical summary; resolve conflicts in decisions[] array. Intentionally has no standalone SKILL.md — executed by orchestrator builtin merge.py, not invoked directly."
+}

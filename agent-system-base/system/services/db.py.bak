@@ -1,0 +1,76 @@
+from __future__ import annotations
+
+import sqlite3
+from contextlib import contextmanager
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Generator
+
+DATABASE_PATH = "/Users/miguelgonzalez/agents/agent-system-base/system/db/database.sqlite"
+_BUSY_TIMEOUT_MS = 10_000
+_SYSTEM_ROOT = Path(__file__).resolve().parent.parent
+_MIGRATIONS_DIR = _SYSTEM_ROOT / "db" / "migrations"
+
+
+def _iso_now() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _migration_files() -> list[Path]:
+    if not _MIGRATIONS_DIR.is_dir():
+        return []
+    return sorted(p for p in _MIGRATIONS_DIR.glob("*.sql") if p.is_file())
+
+
+def _applied_migrations(conn: sqlite3.Connection) -> set[str]:
+    try:
+        cur = conn.execute("SELECT migration_name FROM schema_version")
+    except sqlite3.OperationalError:
+        return set()
+    return {row[0] for row in cur.fetchall()}
+
+
+def _run_pending_migrations(conn: sqlite3.Connection) -> None:
+    applied = _applied_migrations(conn)
+    for path in _migration_files():
+        name = path.name
+        if name in applied:
+            continue
+        sql = path.read_text(encoding="utf-8")
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.executescript(sql)
+            conn.execute(
+                "INSERT INTO schema_version (migration_name, applied_at) VALUES (?, ?)",
+                (name, _iso_now()),
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+
+def _configure_connection(conn: sqlite3.Connection) -> None:
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute(f"PRAGMA busy_timeout = {_BUSY_TIMEOUT_MS}")
+    conn.execute("PRAGMA foreign_keys = ON")
+
+
+@contextmanager
+def connect(
+    *,
+    database: str | None = None,
+    uri: bool = False,
+) -> Generator[sqlite3.Connection, None, None]:
+    """Open the DB. Default file is DATABASE_PATH. Use database= + uri=True for shared :memory: tests."""
+    path = DATABASE_PATH if database is None else database
+    if database is None:
+        Path(DATABASE_PATH).parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path, uri=uri)
+    conn.row_factory = sqlite3.Row
+    try:
+        _configure_connection(conn)
+        _run_pending_migrations(conn)
+        yield conn
+    finally:
+        conn.close()

@@ -1,0 +1,11 @@
+{
+  "name": "senior_dev_guide",
+  "skill": "senior_dev_guide",
+  "role": "Read full project state and guide Miguel through the correct sequence. Prevent drift and skipped steps.",
+  "tools_preferred": ["Read", "Grep", "Glob"],
+  "tools_fallback": ["Read", "Grep"],
+  "inputs_schema": "schemas/agent_output.schema.json",
+  "output_schema": "schemas/agent_output.schema.json",
+  "reads_prior_outputs": false,
+  "notes": "Always reads tasks, memory, plans, and decisions before speaking. Never builds. Never skips a locked task."
+}

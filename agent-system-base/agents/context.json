@@ -1,0 +1,12 @@
+{
+  "name": "context",
+  "skill": "context",
+  "critical": true,
+  "role": "Resolve version-specific API and library behavior before coding.",
+  "tools_preferred": ["Read", "Grep", "Glob", "Bash", "WebFetch", "WebSearch"],
+  "tools_fallback": ["Read", "Grep", "Glob"],
+  "inputs_schema": "schemas/agent_output.schema.json",
+  "output_schema": "schemas/agent_output.schema.json",
+  "reads_prior_outputs": true,
+  "notes": "If Web tools unavailable, confine to repo docs and local files only."
+}

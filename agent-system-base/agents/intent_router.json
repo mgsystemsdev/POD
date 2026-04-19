@@ -1,0 +1,11 @@
+{
+  "name": "intent_router",
+  "skill": "intent_router",
+  "role": "Classify user intent and propose the right agent chain in order. Does not execute — routes and waits for approval.",
+  "tools_preferred": ["Read", "Grep", "Glob"],
+  "tools_fallback": ["Read", "Grep"],
+  "inputs_schema": "schemas/agent_output.schema.json",
+  "output_schema": "schemas/agent_output.schema.json",
+  "reads_prior_outputs": false,
+  "notes": "Never runs agents without approval. Never proposes more than 4 agents. Always checkpoints between agents. If intent is ambiguous, asks one clarifying question before routing."
+}

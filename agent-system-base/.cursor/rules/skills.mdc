@@ -1,0 +1,49 @@
+---
+description: Rules for editing SKILL.md files
+globs: ["**/.claude/skills/**/*.md", "**/skills/**/*.md"]
+---
+
+# Skill Authoring Rules
+
+## Required Frontmatter
+Every SKILL.md must have these fields:
+```yaml
+---
+name: skill-name
+version: "1.0.0"
+description: >
+  Trigger description — be specific about WHEN to use this skill.
+  Include example phrases. Be slightly pushy (Claude undertriggers).
+allowed-tools: Read, Grep, Glob
+---
+```
+
+## Paired Agent Definition
+Every skill must have a matching `agents/<name>.json`. If you create a new skill, create the agent JSON too. The `"skill"` field in the JSON is what wires the skill content into orchestrator execute mode.
+
+## Body Limits
+- Keep SKILL.md body under 500 lines
+- If approaching limit, move reference content to `references/` subdirectory
+- Reference files from SKILL.md with explicit "when to read" guidance
+
+## Trigger Description
+The `description` field is the ONLY thing Claude sees when deciding whether to invoke a skill. Make it:
+- Specific about input patterns and contexts
+- Include example user phrases
+- Cover edge cases and near-misses
+
+## Version Bumping
+Increment `version` when:
+- Behavior changes meaningfully
+- New sections added
+- Trigger description updated
+
+Format: MAJOR.MINOR.PATCH (semver, strings only)
+
+## Progressive Disclosure
+Three loading levels:
+1. `name` + `description` — always in context
+2. SKILL.md body — loaded when skill triggers
+3. `references/` files — loaded only when explicitly needed
+
+Structure content for this hierarchy.
