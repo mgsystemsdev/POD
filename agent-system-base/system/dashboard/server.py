@@ -338,7 +338,7 @@ async def list_entity_approvals(entity_type: str, entity_id: int) -> List[dict]:
 async def record_approval(project_id: int, body: dict = Body(...)) -> dict:
     try:
         return approval_service.record_approval(
-            int(body["project_id"]),
+            project_id,
             str(body["entity_type"]),
             int(body["entity_id"]),
             str(body["decision"]),
@@ -439,6 +439,9 @@ async def create_decision(project_id: int, body: dict = Body(...)) -> dict:
             str(body.get("title", "")),
             str(body.get("content", "")),
             project_id=project_id,
+            created_by=body.get("created_by"),
+            correlation_id=body.get("correlation_id"),
+            source_proposal_id=body.get("source_proposal_id"),
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
@@ -461,7 +464,11 @@ async def put_memory(project_id: int, key: str, body: dict = Body(...)) -> dict:
     value = body.get("value")
     try:
         return memory_service.upsert_memory(
-            project_id, key, str(value) if value is not None else ""
+            project_id,
+            key,
+            str(value) if value is not None else "",
+            created_by=body.get("created_by"),
+            write_reason=body.get("write_reason"),
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc

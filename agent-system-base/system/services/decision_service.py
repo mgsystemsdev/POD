@@ -24,10 +24,21 @@ def _row_to_decision(row: Any) -> dict[str, Any]:
         "created_at": d["created_at"],
         "project_id": d.get("project_id"),
         "source_key": d.get("source_key"),
+        "created_by": d.get("created_by"),
+        "correlation_id": d.get("correlation_id"),
+        "source_proposal_id": d.get("source_proposal_id"),
     }
 
 
-def add_decision(title: str, content: str, *, project_id: int | None = None) -> dict[str, Any]:
+def add_decision(
+    title: str,
+    content: str,
+    *,
+    project_id: int | None = None,
+    created_by: str | None = None,
+    correlation_id: str | None = None,
+    source_proposal_id: int | None = None,
+) -> dict[str, Any]:
     """Append a decision row. No update or delete — append-only."""
     t = title.strip() if isinstance(title, str) else ""
     c = content.strip() if isinstance(content, str) else ""
@@ -38,8 +49,11 @@ def add_decision(title: str, content: str, *, project_id: int | None = None) -> 
     now = _iso_now()
     with db.connect() as conn:
         cur = conn.execute(
-            "INSERT INTO decisions (title, content, created_at, project_id) VALUES (?, ?, ?, ?) RETURNING id",
-            (t, c, now, project_id),
+            """
+            INSERT INTO decisions (title, content, created_at, project_id, created_by, correlation_id, source_proposal_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id
+            """,
+            (t, c, now, project_id, created_by, correlation_id, source_proposal_id),
         )
         did = cur.lastrowid
         conn.commit()

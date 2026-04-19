@@ -71,6 +71,7 @@ def _row_to_task(row: Any) -> dict[str, Any]:
         "created_at": d["created_at"],
         "updated_at": d["updated_at"],
         "correlation_id": d.get("correlation_id"),
+        "created_by": d.get("created_by"),
         "notes": d.get("notes"),
         "requirement_ref": d.get("requirement_ref"),
         "decision_id": d.get("decision_id"),
@@ -89,6 +90,7 @@ def create_task(
     created_at: str | None = None,
     updated_at: str | None = None,
     correlation_id: str | None = None,
+    created_by: str | None = None,
     notes: str | None = None,
     requirement_ref: str | None = None,
     decision_id: int | None = None,
@@ -108,8 +110,8 @@ def create_task(
             """
             INSERT INTO tasks (
               project_id, title, description, status, priority, type, source, created_at, updated_at,
-              correlation_id, notes, requirement_ref, decision_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
+              correlation_id, created_by, notes, requirement_ref, decision_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
             """,
             (
                 project_id,
@@ -122,6 +124,7 @@ def create_task(
                 c_at,
                 u_at,
                 correlation_id,
+                created_by,
                 notes,
                 requirement_ref,
                 decision_id,
