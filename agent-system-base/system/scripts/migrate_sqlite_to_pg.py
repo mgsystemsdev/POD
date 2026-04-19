@@ -74,7 +74,8 @@ def migrate():
         cols = list(rows[0].keys())
         col_list = ", ".join(f'"{c}"' for c in cols)
         placeholders = ", ".join(["%s"] * len(cols))
-        sql = f'INSERT INTO {table} ({col_list}) VALUES ({placeholders}) ON CONFLICT DO NOTHING'
+        overriding = "OVERRIDING SYSTEM VALUE " if table in SEQUENCES else ""
+        sql = f'INSERT INTO {table} ({col_list}) {overriding}VALUES ({placeholders}) ON CONFLICT DO NOTHING'
 
         data = [tuple(r[c] for c in cols) for r in rows]
         with pg.cursor() as cur:
