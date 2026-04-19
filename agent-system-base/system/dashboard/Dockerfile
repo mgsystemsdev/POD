@@ -6,15 +6,15 @@ WORKDIR /app
 COPY system/dashboard/requirements.txt ./dashboard/requirements.txt
 RUN pip install --no-cache-dir -r dashboard/requirements.txt
 
-# Copy application tree — preserves the relative structure that server.py's
-# sys.path.insert expects: /app/services/ is one level up from /app/dashboard/
+# Copy application code
 COPY system/dashboard/ ./dashboard/
-COPY system/services/  ./services/
-COPY system/db/        ./db/
 
-# Log directory (overrides the home-based default in server.py)
+# Expose the bundled services directory on the Python path
+ENV PYTHONPATH=/app/dashboard/services
+
+# Log and data directories
 ENV LOG_DIR=/app/logs
-RUN mkdir -p /app/logs
+RUN mkdir -p /app/logs /app/data
 
 # Railway injects PORT and DATABASE_URL automatically.
 # AGENTS_API_KEY must be set as a Railway environment variable.

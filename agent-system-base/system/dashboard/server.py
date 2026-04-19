@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, List, Optional
 
 # ── Service path ──────────────────────────────────────────────────────────────
-_SERVICES_DIR = Path(__file__).resolve().parent.parent / "services"
+_SERVICES_DIR = Path(__file__).resolve().parent / "services"
 if str(_SERVICES_DIR) not in sys.path:
     sys.path.insert(0, str(_SERVICES_DIR))
 
