@@ -31,6 +31,8 @@ def create(
     target_core_agent: str | None = None,
     related_requirement_ref: str | None = None,
     related_decision_id: int | None = None,
+    specialist_table: str | None = None,
+    specialist_id: int | None = None,
 ) -> dict[str, Any]:
     now = _iso_now()
     with db.connect() as conn:
@@ -38,10 +40,14 @@ def create(
             """
             INSERT INTO auxiliary_agent_outputs (
               project_id, agent_role, content, status,
-              target_core_agent, related_requirement_ref, related_decision_id, created_at
-            ) VALUES (?, ?, ?, 'pending', ?, ?, ?, ?) RETURNING id
+              target_core_agent, related_requirement_ref, related_decision_id,
+              specialist_table, specialist_id, created_at
+            ) VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?) RETURNING id
             """,
-            (project_id, agent_role, content, target_core_agent, related_requirement_ref, related_decision_id, now),
+            (
+                project_id, agent_role, content, target_core_agent, related_requirement_ref, related_decision_id,
+                specialist_table, specialist_id, now
+            ),
         )
         oid = cur.lastrowid
         conn.commit()
@@ -50,3 +56,79 @@ def create(
         ).fetchone()
     assert row is not None
     return dict(row)
+
+
+def create_security_finding(
+    project_id: int,
+    agent_role: str,
+    content: str,
+    severity: str,
+    vulnerability_desc: str,
+    *,
+    cve_id: str | None = None,
+    component: str | None = None,
+    remediation_steps: str | None = None,
+) -> dict[str, Any]:
+    now = _iso_now()
+    with db.connect() as conn:
+        # 1. Create the base auxiliary output
+        base = create(project_id, agent_role, content)
+        aux_id = base["id"]
+
+        # 2. Create the specialized finding
+        cur = conn.execute(
+            """
+            INSERT INTO security_findings (
+                project_id, aux_output_id, cve_id, severity, component, vulnerability_desc, remediation_steps, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
+            """,
+            (project_id, aux_id, cve_id, severity, component, vulnerability_desc, remediation_steps, now),
+        )
+        sid = cur.lastrowid
+
+        # 3. Link back to the base
+        conn.execute(
+            "UPDATE auxiliary_agent_outputs SET specialist_table = 'security_findings', specialist_id = ? WHERE id = ?",
+            (sid, aux_id),
+        )
+        conn.commit()
+        
+        row = conn.execute("SELECT * FROM security_findings WHERE id = ?", (sid,)).fetchone()
+        assert row is not None
+        return dict(row)
+
+
+def create_db_recommendation(
+    project_id: int,
+    agent_role: str,
+    content: str,
+    recommendation_type: str,
+    rec_content: str,
+    *,
+    table_name: str | None = None,
+    performance_impact: str | None = None,
+) -> dict[str, Any]:
+    now = _iso_now()
+    with db.connect() as conn:
+        base = create(project_id, agent_role, content)
+        aux_id = base["id"]
+
+        cur = conn.execute(
+            """
+            INSERT INTO db_recommendations (
+                project_id, aux_output_id, table_name, recommendation_type, content, performance_impact, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id
+            """,
+            (project_id, aux_id, table_name, recommendation_type, rec_content, performance_impact, now),
+        )
+        rid = cur.lastrowid
+
+        conn.execute(
+            "UPDATE auxiliary_agent_outputs SET specialist_table = 'db_recommendations', specialist_id = ? WHERE id = ?",
+            (rid, aux_id),
+        )
+        conn.commit()
+        
+        row = conn.execute("SELECT * FROM db_recommendations WHERE id = ?", (rid,)).fetchone()
+        assert row is not None
+        return dict(row)

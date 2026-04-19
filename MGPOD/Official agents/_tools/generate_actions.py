@@ -27,10 +27,13 @@ AGENT_SCOPE: dict[str, list[tuple[str, str]]] = {
     # ── Core pipeline ──────────────────────────────────────────────────────
     "core/architect": [
         ("/api/projects", "GET"),
+        ("/api/projects", "POST"),                           # create project
+        ("/api/projects/{project_id}", "PUT"),               # rename/update project
         ("/api/projects/{project_id}/blueprints", "GET"),
         ("/api/projects/{project_id}/blueprints", "POST"),
         ("/api/blueprints/{blueprint_id}", "GET"),
         ("/api/blueprints/{blueprint_id}", "PUT"),
+        ("/api/blueprints/{blueprint_id}", "DELETE"),        # clean up stale blueprints
         ("/api/projects/{project_id}/decisions", "GET"),
         ("/api/projects/{project_id}/decisions", "POST"),
         ("/api/projects/{project_id}/memory", "GET"),
@@ -93,11 +96,17 @@ AGENT_SCOPE: dict[str, list[tuple[str, str]]] = {
     },
 }
 
+# ── Backend dependency ─────────────────────────────────────────────────────────
+# DELETE /api/projects/{project_id}: NOT in live API as of 2026-04-19.
+# Until added: Architect uses soft-delete (PUT name → "[ARCHIVED] {name}").
+# When backend adds it: add ("/api/projects/{project_id}", "DELETE") to
+# AGENT_SCOPE["core/architect"] and regenerate actions.json.
+
 # Nice descriptive title per agent (used in info.title/description).
 AGENT_META: dict[str, dict[str, str]] = {
     "core/architect": {
         "title": "Architect Actions (POD)",
-        "role": "Requirement + system validator. Produces canonical project.md (Section A + B) and schema.json. Reads projects/blueprints/decisions/memory; writes blueprints, decisions, memory.",
+        "role": "Project Lifecycle Manager + Requirements Authority. Creates and manages projects in the registry. Produces canonical project.md (Section A + B) and schema.json. Reads/writes projects, blueprints, decisions, memory.",
     },
     "core/execution-spec-gate": {
         "title": "Execution Spec Gate Actions (POD)",
