@@ -417,42 +417,71 @@
   <!-- Tasks tab -->
   <div id="tab-tasks" class="tab-panel">
     <details class="exec-playbook">
-      <summary>CONSOLIDATED TASK SET — Execution Loop (Manual, AS-BUILT)</summary>
+      <summary>agents CLI — Command reference</summary>
       <div class="playbook-inner">
         <p class="playbook-note">
-          To add these as real tasks under <strong>Global Claude</strong> (<code>claude-global</code>), run:
-          <code>python3 system/scripts/seed_execution_loop_project.py</code>
-          from the repo (services on <code>PYTHONPATH</code> via the script). After <code>init.sh</code>, run the same file under <code>~/agents/agent-system-base/system/scripts/</code>.
+          Quick reference for the <code>agents</code> toolchain. Behavior lands as each subcommand is implemented; some flags are dry-run only until wired.
         </p>
         <div class="playbook-step">
-          <h3>Execution Loop / Runtime: Set working directory to runtime environment</h3>
-          <p><strong>Description</strong></p>
-          <p>Change the current directory to <code>~/agents/agent-services</code> before executing any system commands.</p>
-          <p><strong>Success criteria</strong></p>
-          <p>Commands executed from this directory resolve system modules without import errors.</p>
+          <h3><code>agents init</code></h3>
+          <p>Scaffold <code>.claude/</code> (pipeline, governance, specialists) and project wiring files without nuking existing content (when implemented as discussed).</p>
         </div>
         <div class="playbook-step">
-          <h3>Execution Loop / Dashboard: Start FastAPI server</h3>
-          <p><strong>Description</strong></p>
-          <p>Run <code>python3 system/dashboard/server.py</code> from the runtime directory.</p>
-          <p><strong>Success criteria</strong></p>
-          <p>Server starts without error and binds to <code>127.0.0.1:8765</code>.</p>
+          <h3><code>agents add</code></h3>
+          <p>Register the current repo as a project in the dashboard/API and capture linkage details for this workspace.</p>
         </div>
         <div class="playbook-step">
-          <h3>Execution Loop / Worker: Execute manual task worker</h3>
-          <p><strong>Description</strong></p>
-          <p>Run <code>python3 system/services/task_worker.py --mode manual</code> from the runtime directory.</p>
-          <p><strong>Success criteria</strong></p>
-          <p>Terminal outputs <code>READY task_id=... run_id=...</code>.</p>
+          <h3><code>agents register</code></h3>
+          <p>Register or re-point a project by slug, name, or path from anywhere (not tied to cwd).</p>
         </div>
         <div class="playbook-step">
-          <h3>Execution Loop / Completion: Submit task completion via API</h3>
-          <p><strong>Description</strong></p>
-          <p>Send a POST request to <code>/api/tasks/{task_id}/complete</code> with the execution output as a plain text body.</p>
-          <p><strong>Success criteria</strong></p>
-          <p>Request succeeds and the system accepts the output.</p>
+          <h3><code>agents pull</code></h3>
+          <p>Download authoritative Railway state into the local 16-file cache (overwrite local cache with cloud truth).</p>
         </div>
-        <p class="playbook-note" style="margin-top:14px;margin-bottom:0;font-weight:600;color:var(--accent-h);">Execution Loop complete.</p>
+        <div class="playbook-step">
+          <h3><code>agents pull --dry-run</code></h3>
+          <p>Show what pull would fetch or overwrite, without writing files.</p>
+        </div>
+        <div class="playbook-step">
+          <h3><code>agents push</code></h3>
+          <p>Upload local cache changes back to Railway/DB for the tabs that are push-supported.</p>
+        </div>
+        <div class="playbook-step">
+          <h3><code>agents push --dry-run</code></h3>
+          <p>Show what push would send, without writing to the database.</p>
+        </div>
+        <div class="playbook-step">
+          <h3><code>agents tasks</code></h3>
+          <p>Import or normalize <code>tasks.json</code> into the task system (escape hatch when tasks are wedged).</p>
+        </div>
+        <div class="playbook-step">
+          <h3><code>agents dashboard</code></h3>
+          <p>Start the local dashboard server for instant UI inspection.</p>
+        </div>
+        <div class="playbook-step">
+          <h3><code>agents dash</code></h3>
+          <p>Shortcut for <code>agents dashboard</code>.</p>
+        </div>
+        <div class="playbook-step">
+          <h3><code>agents stop</code></h3>
+          <p>Stop the local dashboard server.</p>
+        </div>
+        <div class="playbook-step">
+          <h3><code>agents status</code></h3>
+          <p>One-screen health and readiness: config, connectivity, last pull/push markers, and push prerequisites.</p>
+        </div>
+        <div class="playbook-step">
+          <h3><code>agents doctor</code></h3>
+          <p>Alias of <code>agents status</code> (same output, easier to remember).</p>
+        </div>
+        <div class="playbook-step">
+          <h3><code>agents open</code></h3>
+          <p>Open or print the right dashboard URL for this project from <code>api_url</code> + <code>project_id</code>.</p>
+        </div>
+        <div class="playbook-step">
+          <h3><code>agents help</code></h3>
+          <p>Print the command list and basic usage.</p>
+        </div>
       </div>
     </details>
 
