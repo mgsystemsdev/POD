@@ -379,24 +379,26 @@
     </div>
   </div>
 
-  <!-- Dual Tab Bar -->
+  <!-- Three Tab Rows -->
   <div class="tab-rows">
-    <!-- Row 1: Pipeline + Governance -->
+    <!-- Row 1: Pipeline -->
     <div class="tab-row">
       <span class="tab-row-label pipeline-lbl">Pipeline</span>
       <button type="button" class="tab-btn tab-pipeline active" data-tab="tasks"           onclick="switchTab('tasks')">Tasks</button>
       <button type="button" class="tab-btn tab-pipeline"        data-tab="blueprints"      onclick="switchTab('blueprints')">Blueprints</button>
       <button type="button" class="tab-btn tab-pipeline"        data-tab="session"         onclick="switchTab('session')">Session Log</button>
       <button type="button" class="tab-btn tab-pipeline"        data-tab="execution-trace" onclick="switchTab('execution-trace')">Execution Trace</button>
-      <span style="display:inline-block;width:1px;height:20px;background:var(--border);margin:0 6px;vertical-align:middle;"></span>
-      <span class="tab-row-label gov-lbl" style="min-width:auto">Governance</span>
-      <button type="button" class="tab-btn tab-governance" data-tab="decisions"  onclick="switchTab('decisions')">Decisions</button>
-      <button type="button" class="tab-btn tab-governance" data-tab="memory"     onclick="switchTab('memory')">Memory</button>
-      <button type="button" class="tab-btn tab-governance" data-tab="approvals"  onclick="switchTab('approvals')">Approvals</button>
-      <button type="button" class="tab-btn tab-governance" data-tab="backlog"    onclick="switchTab('backlog')">Backlog</button>
+    </div>
+    <!-- Row 2: Governance -->
+    <div class="tab-row">
+      <span class="tab-row-label gov-lbl">Governance</span>
+      <button type="button" class="tab-btn tab-governance" data-tab="decisions"   onclick="switchTab('decisions')">Decisions</button>
+      <button type="button" class="tab-btn tab-governance" data-tab="memory"      onclick="switchTab('memory')">Memory</button>
+      <button type="button" class="tab-btn tab-governance" data-tab="approvals"   onclick="switchTab('approvals')">Approvals</button>
+      <button type="button" class="tab-btn tab-governance" data-tab="backlog"     onclick="switchTab('backlog')">Backlog</button>
       <button type="button" class="tab-btn tab-governance" data-tab="audit-trail" onclick="switchTab('audit-trail')">Audit Trail</button>
     </div>
-    <!-- Row 2: Auxiliary Specialists -->
+    <!-- Row 3: Auxiliary Specialists -->
     <div class="tab-row">
       <span class="tab-row-label aux-lbl">Specialists</span>
       <button type="button" class="tab-btn tab-auxiliary" data-tab="aux-strategist"    onclick="switchTab('aux-strategist')">Strategist</button>
