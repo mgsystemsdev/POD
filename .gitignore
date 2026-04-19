@@ -3,6 +3,8 @@ agent-services/
 
 # ── Workspace junk ─────────────────────────────────────────────────────────
 .DS_Store
+node_modules/
+dist/
 tmp/
 /.cursor/
 .ruff_cache/
