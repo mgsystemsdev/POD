@@ -190,6 +190,8 @@ def connect(
 ):
     """Open the DB. Uses Postgres when DATABASE_URL is set, SQLite otherwise."""
     if _is_postgres():
-        yield from _pg_connect()
+        with _pg_connect() as conn:
+            yield conn
     else:
-        yield from _sqlite_connect(database=database, uri=uri)
+        with _sqlite_connect(database=database, uri=uri) as conn:
+            yield conn
