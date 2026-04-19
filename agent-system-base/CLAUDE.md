@@ -15,6 +15,8 @@ Claude Code reads this file in every session opened inside this directory.
 
 `init.sh` syncs blueprints → global state + runtime. Run it after any change to skills, agents, orchestrator, or workers.
 
+**What `init.sh` copies:** `orchestrator/`, `agents/`, and `schemas/` → `~/.claude/`; `workers/`, `system/`, and `config/` → `~/agents/agent-services/`. The `system/` tree is **not** copied into `~/.claude/` (if you see a script banner that implies otherwise, trust the `rsync` lines in `init.sh`).
+
 **Monorepo map (domain / application / infrastructure):** see [`docs/architecture.md`](../docs/architecture.md) at the workspace root. **Historical system audits:** [`docs/audits/`](../docs/audits/).
 
 ---

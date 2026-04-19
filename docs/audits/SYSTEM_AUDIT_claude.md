@@ -1,4 +1,7 @@
 # SYSTEM AUDIT — Miguel Gonzalez Agent System
+
+> **Snapshot notice:** Point-in-time audit from **2026-03-23**. Before using this for operations, re-check paths and behavior against the current `agent-system-base/` tree and `init.sh` (see root [`README.md`](../../README.md) and [`agent-system-base/CLAUDE.md`](../../agent-system-base/CLAUDE.md)).
+
 **Date:** 2026-03-23
 **Auditor:** Claude Code — Principal Systems Auditor
 **Scope:** ~/agent-system-base/, ~/.claude/, ~/agent-services/

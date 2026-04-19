@@ -1,4 +1,7 @@
 # SYSTEM AUDIT — agent-system-base
+
+> **Snapshot notice:** Point-in-time audit from **2026-03-23**. Re-verify claims against the current blueprint repo and `init.sh` before operational use (see [`README.md`](../../README.md)).
+
 **Date:** 2026-03-23
 **Auditor:** Claude Code — Principal Systems Auditor
 
