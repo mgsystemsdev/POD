@@ -87,6 +87,12 @@
   .nav-count { font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
   .nav-row.active .nav-count { color: var(--accent-h); }
 
+  .sidebar-admin {
+    margin-top: auto;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    padding: 10px 8px 14px;
+  }
   .main { flex: 1; min-width: 0; overflow-x: auto; display: flex; flex-direction: column; }
   .main-inner { max-width: 1300px; width: 100%; margin: 0 auto; padding: 20px 20px 40px; }
 
@@ -325,6 +331,10 @@
     </div>
     <div class="sidebar-section-label">Projects</div>
     <nav class="project-nav" id="projectNav"></nav>
+    <div class="sidebar-admin" aria-label="Admin">
+      <div class="sidebar-section-label">Admin</div>
+      <div class="sidebar-admin-body" id="sidebarAdmin"></div>
+    </div>
   </aside>
 
   <div class="main">
