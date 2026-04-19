@@ -146,6 +146,73 @@ def _applied_pg_migrations(raw_conn) -> set[str]:
         return set()
 
 
+def _pg_split_statements(sql: str) -> list[str]:
+    """Split a SQL script into statements, correctly handling dollar-quoted blocks.
+
+    Naive split(';') breaks DO $$ ... END $$; blocks because the body contains
+    many semicolons that are not statement terminators.  This scanner tracks
+    dollar-quote depth so those semicolons are left alone.
+    """
+    stmts: list[str] = []
+    buf: list[str] = []
+    i = 0
+    n = len(sql)
+
+    while i < n:
+        # Dollar-quoted block: find the opening tag (e.g. $$ or $BODY$),
+        # then skip everything until the matching closing tag.
+        if sql[i] == "$":
+            end = sql.find("$", i + 1)
+            if end != -1:
+                tag = sql[i : end + 1]
+                close = sql.find(tag, end + 1)
+                if close != -1:
+                    block_end = close + len(tag)
+                    buf.append(sql[i:block_end])
+                    i = block_end
+                    continue
+
+        # Single-quoted string: consume it whole (handle '' escapes).
+        if sql[i] == "'":
+            j = i + 1
+            while j < n:
+                if sql[j] == "'" and (j + 1 >= n or sql[j + 1] != "'"):
+                    break
+                j += 2 if sql[j] == "'" else j + 1 - j  # step over '' or any char
+            buf.append(sql[i : j + 1])
+            i = j + 1
+            continue
+
+        # Line comment: skip to end of line.
+        if sql[i : i + 2] == "--":
+            j = sql.find("\n", i)
+            if j == -1:
+                buf.append(sql[i:])
+                break
+            buf.append(sql[i : j + 1])
+            i = j + 1
+            continue
+
+        # Statement terminator.
+        if sql[i] == ";":
+            stmt = "".join(buf).strip()
+            if stmt:
+                stmts.append(stmt)
+            buf = []
+            i += 1
+            continue
+
+        buf.append(sql[i])
+        i += 1
+
+    # Trailing statement without a semicolon.
+    stmt = "".join(buf).strip()
+    if stmt:
+        stmts.append(stmt)
+
+    return stmts
+
+
 def _run_pg_migrations(raw_conn) -> None:
     applied = _applied_pg_migrations(raw_conn)
     for path in _pg_migration_files():
@@ -153,7 +220,7 @@ def _run_pg_migrations(raw_conn) -> None:
         if name in applied:
             continue
         sql = path.read_text(encoding="utf-8")
-        statements = [s.strip() for s in sql.split(";") if s.strip()]
+        statements = _pg_split_statements(sql)
         try:
             cur = raw_conn.cursor()
             for stmt in statements:

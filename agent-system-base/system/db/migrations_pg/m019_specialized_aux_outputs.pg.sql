@@ -38,9 +38,9 @@ CREATE TABLE IF NOT EXISTS adversarial_critiques (
 );
 
 -- Link auxiliary_agent_outputs to its specialist table via registry fields
-ALTER TABLE auxiliary_agent_outputs ADD COLUMN specialist_table TEXT;
-ALTER TABLE auxiliary_agent_outputs ADD COLUMN specialist_id INTEGER;
+ALTER TABLE auxiliary_agent_outputs ADD COLUMN IF NOT EXISTS specialist_table TEXT;
+ALTER TABLE auxiliary_agent_outputs ADD COLUMN IF NOT EXISTS specialist_id INTEGER;
 
-CREATE INDEX idx_sec_findings_proj ON security_findings(project_id);
-CREATE INDEX idx_db_rec_proj ON db_recommendations(project_id);
-CREATE INDEX idx_adv_crit_proj ON adversarial_critiques(project_id);
+CREATE INDEX IF NOT EXISTS idx_sec_findings_proj ON security_findings(project_id);
+CREATE INDEX IF NOT EXISTS idx_db_rec_proj ON db_recommendations(project_id);
+CREATE INDEX IF NOT EXISTS idx_adv_crit_proj ON adversarial_critiques(project_id);

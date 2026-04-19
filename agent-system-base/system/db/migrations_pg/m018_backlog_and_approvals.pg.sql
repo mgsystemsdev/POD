@@ -46,6 +46,6 @@ CREATE TABLE IF NOT EXISTS execution_trace (
   timestamp TEXT NOT NULL
 );
 
-CREATE INDEX idx_backlog_project ON backlog(project_id);
-CREATE INDEX idx_approvals_entity ON approvals(entity_type, entity_id);
-CREATE INDEX idx_validations_blueprint ON validations(blueprint_id);
+CREATE INDEX IF NOT EXISTS idx_backlog_project ON backlog(project_id);
+CREATE INDEX IF NOT EXISTS idx_approvals_entity ON approvals(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_validations_blueprint ON validations(blueprint_id);
