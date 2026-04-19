@@ -330,8 +330,10 @@ async def create_backlog_item(project_id: int, body: dict = Body(...)) -> dict:
 
 
 @app.get("/api/projects/{project_id}/approvals")
-async def list_entity_approvals(entity_type: str, entity_id: int) -> List[dict]:
-    return approval_service.list_by_entity(entity_type, entity_id)
+async def list_project_approvals(project_id: int) -> List[dict]:
+    if project_service.get_project(project_id) is None:
+        raise HTTPException(404, "Project not found")
+    return approval_service.list_by_project(project_id)
 
 
 @app.post("/api/projects/{project_id}/approvals")
@@ -512,6 +514,27 @@ async def latest_session_log(project_id: int) -> dict:
     if row is None:
         raise HTTPException(404, "No session logs for this project")
     return row
+
+
+# ── Execution trace ───────────────────────────────────────────────────────────
+
+
+@app.get("/api/projects/{project_id}/execution-trace")
+async def list_execution_trace(project_id: int, limit: int = 200) -> List[dict]:
+    if project_service.get_project(project_id) is None:
+        raise HTTPException(404, "Project not found")
+    with db.connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT et.* FROM execution_trace et
+            JOIN tasks t ON t.id = et.task_id
+            WHERE t.project_id = ?
+            ORDER BY et.timestamp DESC
+            LIMIT ?
+            """,
+            (project_id, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
 
 # ── Proposed actions ──────────────────────────────────────────────────────────

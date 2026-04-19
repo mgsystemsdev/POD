@@ -934,8 +934,21 @@ async function loadValidations(projectId) {
 }
 
 async function loadExecutionTrace(projectId) {
+  const data = await api('GET', '/projects/' + projectId + '/execution-trace');
   const el = document.getElementById('executionTraceList');
-  el.innerHTML = '<p style="color:var(--muted)">Execution trace coming soon.</p>';
+  if (!data.length) { el.innerHTML = '<p style="color:var(--muted)">No execution trace entries yet.</p>'; return; }
+  el.innerHTML = data.map(e => {
+    const col = e.error_message ? '#ef4444' : '#22c55e';
+    return `<div class="data-row">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <strong style="font-size:12px;color:var(--accent-h)">${esc(e.agent_role)}</strong>
+        <span style="font-size:12px">${esc(e.action)}</span>
+        ${e.result ? '<span style="font-size:11px;color:' + col + ';margin-left:auto">' + esc(e.result) + '</span>' : ''}
+        <span style="font-size:10px;color:var(--muted)">${(e.timestamp||'').slice(0,19).replace('T',' ')}</span>
+      </div>
+      ${e.error_message ? '<div style="font-size:11px;color:#ef4444">' + esc(e.error_message) + '</div>' : ''}
+    </div>`;
+  }).join('');
 }
 
 async function loadBacklog(projectId) {
@@ -949,8 +962,22 @@ async function loadBacklog(projectId) {
 }
 
 async function loadApprovals(projectId) {
+  const data = await api('GET', '/projects/' + projectId + '/approvals');
   const el = document.getElementById('approvalList');
-  el.innerHTML = '<p style="color:var(--muted)">Approvals coming soon.</p>';
+  if (!data.length) { el.innerHTML = '<p style="color:var(--muted)">No approvals yet.</p>'; return; }
+  const DECISION_COLOR = { approved: '#22c55e', rejected: '#ef4444' };
+  el.innerHTML = data.map(a => {
+    const col = DECISION_COLOR[a.decision] || 'var(--muted)';
+    return `<div class="data-row">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <strong style="font-size:13px">${esc(a.entity_type)} #${a.entity_id}</strong>
+        <span style="margin-left:auto;font-size:11px;font-weight:600;color:${col}">${esc(a.decision)}</span>
+        <span style="font-size:10px;color:var(--muted)">${(a.created_at||'').slice(0,10)}</span>
+      </div>
+      ${a.reason ? '<div style="font-size:12px;color:var(--muted)">' + esc(a.reason) + '</div>' : ''}
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">by ${esc(a.approver_role)}</div>
+    </div>`;
+  }).join('');
 }
 
 async function loadAuditTrail(projectId) {
@@ -1125,7 +1152,7 @@ function openModal(id) {
   editingId = id || null;
   document.getElementById('modal-title').textContent = id ? 'Edit Task' : 'New Task';
   if (id) {
-    const t = allTasks.find(x => x.id === id);
+    const t = allTasks.find(x => String(x.id) === String(id));
     if (!t) return;
     document.getElementById('f-title').value = t.title;
     document.getElementById('f-desc').value  = t.description;

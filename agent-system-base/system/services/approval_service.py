@@ -60,3 +60,12 @@ def list_by_entity(entity_type: str, entity_id: int) -> list[dict[str, Any]]:
             (entity_type, entity_id),
         ).fetchall()
         return [_row_to_approval(r) for r in rows]
+
+
+def list_by_project(project_id: int) -> list[dict[str, Any]]:
+    with db.connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM approvals WHERE project_id = ? ORDER BY created_at DESC",
+            (project_id,),
+        ).fetchall()
+        return [_row_to_approval(r) for r in rows]
