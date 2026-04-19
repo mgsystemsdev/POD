@@ -289,10 +289,16 @@
   <div class="tab-bar hidden" id="tabBar" role="tablist" aria-label="Project views">
     <button type="button" class="tab-btn active" data-tab="tasks" onclick="switchTab('tasks')">Tasks</button>
     <button type="button" class="tab-btn" data-tab="blueprints" onclick="switchTab('blueprints')">Blueprints</button>
+    <button type="button" class="tab-btn" data-tab="requirements" onclick="switchTab('requirements')">Requirements</button>
     <button type="button" class="tab-btn" data-tab="decisions" onclick="switchTab('decisions')">Decisions</button>
+    <button type="button" class="tab-btn" data-tab="validations" onclick="switchTab('validations')">Validations</button>
     <button type="button" class="tab-btn" data-tab="session" onclick="switchTab('session')">Session Log</button>
-    <button type="button" class="tab-btn" data-tab="memory" onclick="switchTab('memory')">Memory</button>
+    <button type="button" class="tab-btn" data-tab="execution-trace" onclick="switchTab('execution-trace')">Execution Trace</button>
+    <button type="button" class="tab-btn" data-tab="backlog" onclick="switchTab('backlog')">Backlog</button>
+    <button type="button" class="tab-btn" data-tab="approvals" onclick="switchTab('approvals')">Approvals</button>
     <button type="button" class="tab-btn" data-tab="proposals" onclick="switchTab('proposals')">Proposals</button>
+    <button type="button" class="tab-btn" data-tab="audit-trail" onclick="switchTab('audit-trail')">Audit Trail</button>
+    <button type="button" class="tab-btn" data-tab="memory" onclick="switchTab('memory')">Memory</button>
   </div>
 
   <div id="tab-tasks" class="tab-panel">
@@ -466,6 +472,16 @@
     </div>
   </div>
 
+  <div id="tab-requirements" class="tab-panel hidden">
+    <div class="tab-panel-inner">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <strong style="font-size:14px;color:var(--text);">Requirements</strong>
+        <button type="button" class="btn btn-primary" onclick="showAddRequirement()">+ Add Requirement</button>
+      </div>
+      <div id="requirementList"></div>
+    </div>
+  </div>
+
   <div id="tab-decisions" class="tab-panel hidden">
     <div class="tab-panel-inner">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -476,10 +492,41 @@
     </div>
   </div>
 
+  <div id="tab-validations" class="tab-panel hidden">
+    <div class="tab-panel-inner">
+      <strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Validations</strong>
+      <div id="validationList"></div>
+    </div>
+  </div>
+
   <div id="tab-session" class="tab-panel hidden">
     <div class="tab-panel-inner">
       <strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Session logs</strong>
       <div id="sessionList"></div>
+    </div>
+  </div>
+
+  <div id="tab-execution-trace" class="tab-panel hidden">
+    <div class="tab-panel-inner">
+      <strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Execution Trace</strong>
+      <div id="executionTraceList"></div>
+    </div>
+  </div>
+
+  <div id="tab-backlog" class="tab-panel hidden">
+    <div class="tab-panel-inner">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <strong style="font-size:14px;color:var(--text);">Backlog</strong>
+        <button type="button" class="btn btn-primary" onclick="showAddBacklog()">+ Add Idea</button>
+      </div>
+      <div id="backlogList"></div>
+    </div>
+  </div>
+
+  <div id="tab-approvals" class="tab-panel hidden">
+    <div class="tab-panel-inner">
+      <strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Approvals</strong>
+      <div id="approvalList"></div>
     </div>
   </div>
 
@@ -497,6 +544,13 @@
     <div class="tab-panel-inner">
       <strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Agent Proposals</strong>
       <div id="proposalsList"></div>
+    </div>
+  </div>
+
+  <div id="tab-audit-trail" class="tab-panel hidden">
+    <div class="tab-panel-inner">
+      <strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Audit Trail</strong>
+      <div id="auditTrailList"></div>
     </div>
   </div>
 
@@ -703,7 +757,12 @@ function switchTab(tabName) {
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.tab === tabName);
   });
-  ['tasks', 'blueprints', 'decisions', 'session', 'memory', 'proposals'].forEach(t => {
+  const panels = [
+    'tasks', 'blueprints', 'requirements', 'decisions', 'validations',
+    'session', 'execution-trace', 'backlog', 'approvals', 'proposals',
+    'audit-trail', 'memory'
+  ];
+  panels.forEach(t => {
     const el = document.getElementById('tab-' + t);
     if (el) el.classList.toggle('hidden', t !== tabName);
   });
@@ -717,7 +776,19 @@ function activeProjectIdForTabs() {
 
 function _placeholderProjectRequired(tab) {
   const msg = 'Select a project in the sidebar (not “All Tasks”) to load this tab. After editing files on disk, run <code style="font-size:11px">agents push</code>.';
-  const map = { blueprints: 'blueprintList', decisions: 'decisionList', session: 'sessionList', memory: 'memoryList', proposals: 'proposalsList' };
+  const map = {
+    blueprints: 'blueprintList',
+    requirements: 'requirementList',
+    decisions: 'decisionList',
+    validations: 'validationList',
+    session: 'sessionList',
+    'execution-trace': 'executionTraceList',
+    backlog: 'backlogList',
+    approvals: 'approvalList',
+    proposals: 'proposalsList',
+    'audit-trail': 'auditTrailList',
+    memory: 'memoryList'
+  };
   const id = map[tab];
   if (id) document.getElementById(id).innerHTML = '<p style="color:var(--muted);line-height:1.5">' + msg + '</p>';
 }
@@ -726,15 +797,21 @@ async function loadTabData(tab) {
   const pid = activeProjectIdForTabs();
   if (tab === 'tasks') return;
   if (!pid) {
-    if (['blueprints', 'decisions', 'session', 'memory', 'proposals'].includes(tab)) _placeholderProjectRequired(tab);
+    _placeholderProjectRequired(tab);
     return;
   }
   try {
     if (tab === 'blueprints') await loadBlueprints(pid);
+    if (tab === 'requirements') await loadRequirements(pid);
     if (tab === 'decisions') await loadDecisions(pid);
+    if (tab === 'validations') await loadValidations(pid);
     if (tab === 'session') await loadSessionLogs(pid);
+    if (tab === 'execution-trace') await loadExecutionTrace(pid);
+    if (tab === 'backlog') await loadBacklog(pid);
+    if (tab === 'approvals') await loadApprovals(pid);
     if (tab === 'memory') await loadMemory(pid);
     if (tab === 'proposals') await loadProposals(pid);
+    if (tab === 'audit-trail') await loadAuditTrail(pid);
   } catch (e) {
     toast('Tab load failed: ' + e.message, 'err');
   }
@@ -835,6 +912,67 @@ async function loadProposals(projectId) {
       <div style="font-size:12px;color:var(--text);line-height:1.5">${preview}</div>
     </div>`;
   }).join('');
+}
+
+async function loadRequirements(projectId) {
+  const data = await api('GET', '/tasks?project_id=' + projectId); // Placeholder: need real endpoint eventually
+  const el = document.getElementById('requirementList');
+  if (!data.length) { el.innerHTML = '<p style="color:var(--muted)">No requirements yet.</p>'; return; }
+  el.innerHTML = data.map(r =>
+    '<div class="data-row"><strong>' + esc(r.requirement_ref || 'REQ-???') + ': ' + esc(r.title) + '</strong> <span style="color:var(--muted);font-size:11px;">Tier ' + (r.tier || 1) + '</span></div>'
+  ).join('');
+}
+
+async function loadValidations(projectId) {
+  const data = await api('GET', '/projects/' + projectId + '/validations');
+  const el = document.getElementById('validationList');
+  if (!data.length) { el.innerHTML = '<p style="color:var(--muted)">No validations yet.</p>'; return; }
+  el.innerHTML = data.map(v =>
+    '<div class="data-row"><strong>Blueprint #' + v.blueprint_id + '</strong>: <span class="status-badge ' + v.status + '">' + esc(v.status) + '</span>' +
+    (v.findings ? '<pre style="margin-top:8px">' + esc(v.findings) + '</pre>' : '') + '</div>'
+  ).join('');
+}
+
+async function loadExecutionTrace(projectId) {
+  const el = document.getElementById('executionTraceList');
+  el.innerHTML = '<p style="color:var(--muted)">Execution trace coming soon.</p>';
+}
+
+async function loadBacklog(projectId) {
+  const data = await api('GET', '/projects/' + projectId + '/backlog');
+  const el = document.getElementById('backlogList');
+  if (!data.length) { el.innerHTML = '<p style="color:var(--muted)">Empty backlog.</p>'; return; }
+  el.innerHTML = data.map(b =>
+    '<div class="data-row"><strong>' + esc(b.title) + '</strong> <span style="color:var(--muted);font-size:11px;">by ' + esc(b.submitted_by) + '</span>' +
+    '<div style="margin-top:4px">' + esc(b.description || '') + '</div></div>'
+  ).join('');
+}
+
+async function loadApprovals(projectId) {
+  const el = document.getElementById('approvalList');
+  el.innerHTML = '<p style="color:var(--muted)">Approvals coming soon.</p>';
+}
+
+async function loadAuditTrail(projectId) {
+  const el = document.getElementById('auditTrailList');
+  el.innerHTML = '<p style="color:var(--muted)">Audit trail coming soon.</p>';
+}
+
+async function showAddBacklog() {
+  const pid = activeProjectIdForTabs();
+  if (!pid) return;
+  const title = prompt('Idea title?');
+  if (!title) return;
+  const description = prompt('Description?') || '';
+  try {
+    await api('POST', '/projects/' + pid + '/backlog', { title, description, submitted_by: 'human' });
+    toast('Idea added to backlog');
+    loadBacklog(pid);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function showAddRequirement() {
+  toast('Add requirement via Architect or direct DB write for now.', 'err');
 }
 
 async function showAddBlueprint() {

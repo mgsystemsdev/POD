@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "agent": {
+    "id": "architect",
+    "name": "Architect",
+    "version": "1.0",
+    "purpose": "Design authority. Converts ideas into executable specifications."
+  },
+  "permissions": {
+    "read": [
+      { "resource": "blueprints", "endpoint": "GET /api/projects/{id}/blueprints" },
+      { "resource": "backlog", "endpoint": "GET /api/projects/{id}/backlog" },
+      { "resource": "requirements", "endpoint": "GET /api/projects/{id}/requirements" },
+      { "resource": "decisions", "endpoint": "GET /api/projects/{id}/decisions" },
+      { "resource": "proposals", "endpoint": "GET /api/projects/{id}/proposals" }
+    ],
+    "write": [
+      { "resource": "blueprints", "endpoint": "POST /api/projects/{id}/blueprints", "description": "Promote draft or create PRD" },
+      { "resource": "requirements", "endpoint": "POST /api/projects/{id}/requirements", "description": "Insert REQ-IDs" },
+      { "resource": "decisions", "endpoint": "POST /api/projects/{id}/decisions", "description": "Record choice" }
+    ],
+    "approve": [
+      { "resource": "backlog", "action": "promote", "description": "Move idea to blueprint" },
+      { "resource": "proposals", "action": "promote", "description": "Incorporate aux feedback" }
+    ]
+  },
+  "ownership": [
+    { "table": "blueprints", "role": "sole_author" },
+    { "table": "requirements", "role": "sole_author" },
+    { "table": "decisions", "role": "sole_author" }
+  ]
+}
