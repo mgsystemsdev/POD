@@ -314,8 +314,19 @@ def _patch_bare_objects(node):
     Recursively walk the schema tree and fix any object schemas that lack
     `properties`. ChatGPT Actions validator rejects `{type: object}` without
     an explicit `properties` key, even when `additionalProperties: true` is set.
+
+    Also replaces a completely empty JSON Schema ``{}`` (e.g. FastAPI default
+    response model) with an explicit object shape — strict clients reject bare
+    ``{}``.
     """
     if isinstance(node, dict):
+        s = node.get("schema")
+        if isinstance(s, dict) and len(s) == 0:
+            node["schema"] = {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": True,
+            }
         if node.get("type") == "object" and "properties" not in node:
             node["properties"] = {}
             node.setdefault("additionalProperties", True)
@@ -397,10 +408,16 @@ def main() -> int:
             print(f"  SKIP (missing dir): {relpath}")
             continue
         schema = build_agent_schema(source, relpath, scope)
+        payload = json.dumps(schema, indent=2) + "\n"
         out = agent_dir / "actions.json"
-        out.write_text(json.dumps(schema, indent=2) + "\n", encoding="utf-8")
+        out.write_text(payload, encoding="utf-8")
         ops = sum(len(m) for m in schema["paths"].values())
         print(f"  wrote {out.relative_to(OFFICIAL_AGENTS_ROOT.parent)}  ops={ops}  bytes={out.stat().st_size}")
+        if relpath == "core/architect":
+            bundle_out = agent_dir / "agent-architecture-official" / "actions.json"
+            if bundle_out.parent.is_dir():
+                bundle_out.write_text(payload, encoding="utf-8")
+                print(f"  also {bundle_out.relative_to(OFFICIAL_AGENTS_ROOT.parent)}  (GPT bundle)")
         written += 1
 
     print(f"\nDone. {written} files written under {OFFICIAL_AGENTS_ROOT}")

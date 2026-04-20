@@ -3,6 +3,7 @@ Mirror on-disk Claude project files into SQLite for the task dashboard.
 
 - ``project.md`` → ``blueprints`` (type ``project_md``) — **Blueprints** tab
 - ``decisions.md`` → ``decisions`` (file-mirror upsert) — **Decisions** tab
+- ``requirements.md`` → ``requirements`` table (``## REQ-...`` sections) — **Requirements** tab
 - ``session.md`` / ``sessions.md`` → ``session_logs`` (file-mirror upsert) — **Session Log** tab
 - ``.claude/memory/MEMORY.md`` → one ``memory`` row (key ``mirror/memory/MEMORY.md``) — **Memory** tab
 
@@ -98,6 +99,36 @@ def upsert_decisions_file_from_disk(
             return "unchanged", f"decisions file-mirror (already matches disk) ← {label}"
         decision_service.upsert_file_mirror_decision(project_id, content)
         return ("updated" if existing else "created"), f"decisions tab ← {label}"
+    except Exception as exc:
+        return "error", f"{type(exc).__name__}: {exc}"
+
+
+def upsert_requirements_file_from_disk(
+    project_id: int,
+    file_path: Path,
+    *,
+    dry_run: bool,
+) -> tuple[str, str]:
+    """Parse ``.claude/requirements.md`` (``## REQ-...``) into the ``requirements`` table."""
+    import requirement_service  # noqa: PLC0415
+
+    label = str(file_path)
+    if not file_path.is_file():
+        return "skipped", f"no {label}"
+    try:
+        content = file_path.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        return "error", f"read failed {label}: {exc}"
+
+    try:
+        parsed = requirement_service.parse_requirements_markdown(content)
+        if dry_run:
+            return (
+                "dry-run",
+                f"would sync requirements ({len(parsed)} section(s)) ← {label}",
+            )
+        kind, msg = requirement_service.replace_from_disk(project_id, content)
+        return kind, msg
     except Exception as exc:
         return "error", f"{type(exc).__name__}: {exc}"
 
