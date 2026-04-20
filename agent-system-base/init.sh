@@ -92,6 +92,23 @@ DECISIONSMD
   echo "  Created .claude/decisions.md"
 fi
 
+if [ ! -f "$TARGET/.claude/requirements.md" ]; then
+  cat > "$TARGET/.claude/requirements.md" << 'REQMD'
+# Requirements
+
+Use one section per requirement. The dashboard **Requirements** tab and `agents push` sync rows from this file.
+
+## REQ-001 Example requirement title
+
+Status: draft
+
+Describe acceptance criteria and scope here. Link tasks with `requirement_ref` matching this id (e.g. REQ-001).
+
+---
+REQMD
+  echo "  Created .claude/requirements.md"
+fi
+
 # 3b. Seed project context files (copy templates, don't overwrite existing)
 if [ ! -f "$TARGET/CLAUDE.md" ]; then
     cp "$BASE_DIR/CLAUDE.md" "$TARGET/CLAUDE.md"
@@ -114,7 +131,7 @@ echo "  ~/.claude/          (orchestrator + agents + schemas + system — global
 echo "  ~/agents/agent-services/   (workers synced — runtime layer)"
 echo "  runs/               (per-project run outputs)"
 echo "  .claude/skills/swarm/SKILL.md"
-echo "  .claude/{project.md,tasks.json,session.md,decisions.md}"
+echo "  .claude/{project.md,tasks.json,session.md,decisions.md,requirements.md}"
 echo ""
 echo "To run the orchestrator:"
 echo "  cd ~/.claude && python3 -m orchestrator --runs-dir $TARGET/runs/ephemeral --plan swarm_research --goal 'test' --mode simulate"

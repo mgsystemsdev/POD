@@ -423,7 +423,8 @@
     <!-- Row 2: Governance -->
     <div class="tab-row">
       <span class="tab-row-label gov-lbl">Governance</span>
-      <button type="button" class="tab-btn tab-governance" data-tab="decisions"   onclick="switchTab('decisions')">Decisions</button>
+      <button type="button" class="tab-btn tab-governance" data-tab="decisions"     onclick="switchTab('decisions')">Decisions</button>
+      <button type="button" class="tab-btn tab-governance" data-tab="requirements" onclick="switchTab('requirements')">Requirements</button>
       <button type="button" class="tab-btn tab-governance" data-tab="memory"      onclick="switchTab('memory')">Memory</button>
       <button type="button" class="tab-btn tab-governance" data-tab="approvals"   onclick="switchTab('approvals')">Approvals</button>
       <button type="button" class="tab-btn tab-governance" data-tab="backlog"     onclick="switchTab('backlog')">Backlog</button>
@@ -594,6 +595,20 @@
         <button type="button" class="btn btn-primary" onclick="showAddDecision()">+ Add Decision</button>
       </div>
       <div id="decisionList"></div>
+    </div>
+  </div>
+
+  <!-- Requirements tab -->
+  <div id="tab-requirements" class="tab-panel hidden">
+    <div class="tab-panel-inner">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <strong style="font-size:14px;color:var(--text);">Requirements</strong>
+        <button type="button" class="btn btn-primary" onclick="showAddRequirement()">+ Add Requirement</button>
+      </div>
+      <p style="color:var(--muted);font-size:12px;line-height:1.5;margin:0 0 12px 0">
+        Rows with <strong>disk</strong> sync from <code>.claude/governance/requirements.md</code> or <code>.claude/requirements.md</code> on <code>agents push</code> (one <code>## REQ-…</code> section per row). Dashboard-only rows stay until you delete them from the DB.
+      </p>
+      <div id="requirementsList"></div>
     </div>
   </div>
 
@@ -771,7 +786,7 @@ function actionTypeDisplayLabel(key) {
 
 const ALL_TABS = [
   'tasks','blueprints','session','execution-trace',
-  'decisions','memory','approvals','backlog','audit-trail',
+  'decisions','requirements','memory','approvals','backlog','audit-trail',
   'aux-strategist','aux-system-design','aux-backend-spec',
   'aux-db-spec','aux-schema-spec','aux-ui-spec','aux-senior-dev',
 ];
@@ -1107,7 +1122,7 @@ async function loadTabData(tab) {
   if (tab === 'tasks') return;
 
   const needsProject = [
-    'blueprints','session','execution-trace','decisions','memory',
+    'blueprints','session','execution-trace','decisions','requirements','memory',
     'approvals','backlog',
     ...Object.keys(AUX_LIST_MAP),
   ];
@@ -1115,6 +1130,7 @@ async function loadTabData(tab) {
   if (!pid) {
     if (tab === 'blueprints')      _placeholderProjectRequired('blueprintList');
     if (tab === 'decisions')       _placeholderProjectRequired('decisionList');
+    if (tab === 'requirements')    _placeholderProjectRequired('requirementsList');
     if (tab === 'session')         _placeholderProjectRequired('sessionList');
     if (tab === 'execution-trace') _placeholderProjectRequired('executionTraceList');
     if (tab === 'memory')          _placeholderProjectRequired('memoryList');
@@ -1127,6 +1143,7 @@ async function loadTabData(tab) {
   try {
     if (tab === 'blueprints')      await loadBlueprints(pid);
     if (tab === 'decisions')       await loadDecisions(pid);
+    if (tab === 'requirements')   await loadRequirements(pid);
     if (tab === 'session')         await loadSessionLogs(pid);
     if (tab === 'execution-trace') await loadExecutionTrace(pid);
     if (tab === 'memory')          await loadMemory(pid);
@@ -1164,6 +1181,27 @@ async function loadDecisions(projectId) {
       : '<div style="color:var(--muted);margin-top:6px">' + esc(c) + '</div>';
     return '<div class="data-row"><strong>' + esc(d.title) + '</strong>' + body +
       '<div style="font-size:11px;color:var(--muted);margin-top:4px">' + esc(d.created_at) + '</div></div>';
+  }).join('');
+}
+
+async function loadRequirements(projectId) {
+  const data = await api('GET', '/projects/' + projectId + '/requirements');
+  const el = document.getElementById('requirementsList');
+  if (!data.length) { el.innerHTML = '<p style="color:var(--muted)">No requirements yet. Edit <code>.claude/requirements.md</code> and run <code>agents push</code>, or add a row here.</p>'; return; }
+  const preStyle = 'margin-top:8px;max-height:min(50vh,360px);overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.45;color:var(--text);';
+  const srcLabel = (r) => (Number(r.from_file) === 1 ? 'disk' : 'dashboard');
+  el.innerHTML = data.map(r => {
+    const body = (r.body && String(r.body).trim())
+      ? '<pre style="' + preStyle + '">' + esc(r.body) + '</pre>'
+      : '';
+    return '<div class="data-row">' +
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">' +
+      '<strong style="color:var(--accent-h);font-size:13px">' + esc(r.ref) + '</strong>' +
+      '<span style="font-size:12px;color:var(--text)">' + esc(r.title) + '</span>' +
+      '<span style="margin-left:auto;font-size:11px;font-weight:600;color:var(--muted)">' + esc(r.status) + '</span>' +
+      '<span style="font-size:10px;color:var(--muted)">' + esc(srcLabel(r)) + '</span></div>' +
+      body +
+      '<div style="font-size:10px;color:var(--muted);margin-top:4px">' + esc(r.updated_at || r.created_at || '') + '</div></div>';
   }).join('');
 }
 
@@ -1344,6 +1382,22 @@ async function showAddDecision() {
     await api('POST', '/projects/' + pid + '/decisions', { title, content });
     toast('Decision saved');
     loadDecisions(pid);
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function showAddRequirement() {
+  const pid = activeProjectIdForTabs();
+  if (!pid) { toast('Select a project first', 'err'); return; }
+  const ref = prompt('Requirement ref (e.g. REQ-010)?');
+  if (!ref) return;
+  const title = prompt('Title?');
+  if (!title) return;
+  const body = prompt('Body / acceptance criteria (optional)?') || '';
+  const status = (prompt('Status: draft, active, done, deferred (default draft)?', 'draft') || 'draft').trim();
+  try {
+    await api('POST', '/projects/' + pid + '/requirements', { ref, title, body, status });
+    toast('Requirement saved');
+    loadRequirements(pid);
   } catch (e) { toast(e.message, 'err'); }
 }
 

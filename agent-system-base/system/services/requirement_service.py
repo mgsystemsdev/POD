@@ -10,7 +10,7 @@ import project_service
 _ALLOWED_STATUS = frozenset({"draft", "active", "done", "deferred"})
 
 _SECTION = re.compile(r"^##\s+(REQ-[A-Za-z0-9.-]+)\s*(.*?)\s*$", re.MULTILINE)
-_STATUS_LINE = re.compile(r"^(?i)status:\s*([\w-]+)\s*$")
+_STATUS_LINE = re.compile(r"^status:\s*([\w-]+)\s*$", re.IGNORECASE)
 
 
 def _iso_now() -> str:
@@ -36,8 +36,9 @@ def _strip_status_prefix(body: str) -> tuple[str, str]:
     if not b:
         return "draft", ""
     lines = b.splitlines()
-    if lines and _STATUS_LINE.match(lines[0].strip()):
-        st = _normalize_status(_STATUS_LINE.match(lines[0].strip()).group(1))
+    m0 = _STATUS_LINE.match(lines[0].strip()) if lines else None
+    if m0:
+        st = _normalize_status(m0.group(1))
         rest = "\n".join(lines[1:]).strip()
         return st, rest
     return "draft", b
@@ -129,9 +130,9 @@ def add_requirement(
         cur = conn.execute(
             """
             INSERT INTO requirements (project_id, ref, title, body, status, from_file, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, 0, ?, ?) RETURNING id
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
             """,
-            (project_id, r, t, b or None, st, now, now),
+            (project_id, r, t, b or None, st, False, now, now),
         )
         rid = cur.lastrowid
         conn.commit()
@@ -158,14 +159,14 @@ def replace_from_disk(project_id: int, markdown: str) -> tuple[str, str]:
             conn.execute(
                 f"""
                 DELETE FROM requirements
-                WHERE project_id = ? AND from_file = 1 AND ref NOT IN ({placeholders})
+                WHERE project_id = ? AND from_file = ? AND ref NOT IN ({placeholders})
                 """,
-                (project_id, *refs),
+                (project_id, True, *refs),
             )
         else:
             conn.execute(
-                "DELETE FROM requirements WHERE project_id = ? AND from_file = 1",
-                (project_id,),
+                "DELETE FROM requirements WHERE project_id = ? AND from_file = ?",
+                (project_id, True),
             )
 
         for p in parsed:
@@ -179,18 +180,18 @@ def replace_from_disk(project_id: int, markdown: str) -> tuple[str, str]:
                 conn.execute(
                     """
                     UPDATE requirements
-                    SET title = ?, body = ?, status = ?, from_file = 1, updated_at = ?
+                    SET title = ?, body = ?, status = ?, from_file = ?, updated_at = ?
                     WHERE id = ?
                     """,
-                    (p["title"], body_val, p["status"], now, int(row["id"])),
+                    (p["title"], body_val, p["status"], True, now, int(row["id"])),
                 )
             else:
                 conn.execute(
                     """
                     INSERT INTO requirements (project_id, ref, title, body, status, from_file, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (project_id, p["ref"], p["title"], body_val, p["status"], now, now),
+                    (project_id, p["ref"], p["title"], body_val, p["status"], True, now, now),
                 )
         conn.commit()
 

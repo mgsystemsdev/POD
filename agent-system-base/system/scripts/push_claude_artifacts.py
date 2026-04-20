@@ -10,6 +10,7 @@ Writes (new 3-folder layout; falls back to legacy flat layout if files are missi
 
   - .claude/pipeline/blueprints.md   (legacy: .claude/project.md)       → **Blueprints**
   - .claude/governance/decisions.md  (legacy: .claude/decisions.md)     → **Decisions**
+  - .claude/governance/requirements.md (legacy: .claude/requirements.md) → **Requirements** table
   - .claude/pipeline/session_log.md  (legacy: .claude/session.md)       → **Session Log**
   - .claude/governance/memory.md     (legacy: .claude/memory/MEMORY.md) → **Memory**
   - .claude/governance/backlog.md    → sentinel backlog row (CLI mirror)
@@ -115,7 +116,7 @@ def _sync_markdown_for_project(
     *,
     dry_run: bool,
 ) -> int:
-    """Sync project, decisions, session, and ``.claude/memory/MEMORY.md`` into SQLite. Returns 0, or 2 if slug missing."""
+    """Sync project, decisions, requirements, session, and memory into the DB. Returns 0, or 2 if slug missing."""
     row = project_service.get_project_by_slug(slug)
     if row is None:
         print(
@@ -154,6 +155,12 @@ def _sync_markdown_for_project(
         )
         results.append((path.name + " → decisions", kind, msg))
 
+    def _sync_requirements_file(path: Path) -> None:
+        kind, msg = claude_artifact_sync.upsert_requirements_file_from_disk(
+            project_id, path, dry_run=dry_run
+        )
+        results.append((path.name + " → requirements", kind, msg))
+
     def _sync_session_file(path: Path) -> None:
         kind, msg = claude_artifact_sync.upsert_session_file_from_disk(
             project_id, path, dry_run=dry_run
@@ -177,6 +184,14 @@ def _sync_markdown_for_project(
     # Decisions: new .claude/governance/decisions.md, fallback to legacy .claude/decisions.md
     _sync_decisions_file(
         _first_existing(claude_dir / "governance" / "decisions.md", claude_dir / "decisions.md")
+    )
+
+    # Requirements: governance/requirements.md or legacy .claude/requirements.md
+    _sync_requirements_file(
+        _first_existing(
+            claude_dir / "governance" / "requirements.md",
+            claude_dir / "requirements.md",
+        )
     )
 
     # Session Log: new .claude/pipeline/session_log.md, fallback to legacy .claude/session(s).md

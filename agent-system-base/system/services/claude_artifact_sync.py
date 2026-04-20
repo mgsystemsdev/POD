@@ -21,6 +21,17 @@ MEMORY_DASHBOARD_FILE = "MEMORY.md"
 # Removed from decisions/session tables; delete if still present in memory
 LEGACY_MEMORY_KEYS = frozenset({"mirror_claude_decisions_md", "mirror_claude_session_md"})
 
+# Specialist tab filenames under ``.claude/specialists/`` (must match pull script).
+SPECIALIST_ROLES_CLI = (
+    "strategist",
+    "system_design",
+    "backend_spec",
+    "db_spec",
+    "schema_spec",
+    "ui_spec",
+    "senior_dev",
+)
+
 
 def upsert_file_blueprint_from_disk(
     project_id: int,
@@ -295,3 +306,51 @@ def sync_claude_memory_folder(
         out.append((label, "error", f"{type(exc).__name__}: {exc}"))
 
     return out
+
+
+def sync_specialist_file_from_disk(
+    project_id: int,
+    agent_role: str,
+    file_path: Path,
+    *,
+    dry_run: bool,
+) -> tuple[str, str, str]:
+    """Push ``.claude/specialists/{role}.md`` → ``auxiliary_agent_outputs`` (CLI mirror)."""
+    import auxiliary_agent_output_service  # noqa: PLC0415
+
+    label = f"specialists/{agent_role}.md"
+    if not file_path.is_file():
+        return (label, "skipped", f"no {file_path}")
+    try:
+        content = file_path.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        return (label, "error", f"read failed: {exc}")
+    if not content:
+        return (label, "skipped", f"{file_path} is empty")
+
+    kind, msg = auxiliary_agent_output_service.upsert_cli_mirror_output(
+        project_id, agent_role, content, dry_run=dry_run
+    )
+    return (label, kind, msg)
+
+
+def sync_backlog_cli_mirror_from_disk(
+    project_id: int,
+    file_path: Path,
+    *,
+    dry_run: bool,
+) -> tuple[str, str]:
+    """Push ``.claude/governance/backlog.md`` → sentinel backlog row."""
+    import backlog_service  # noqa: PLC0415
+
+    label = str(file_path)
+    if not file_path.is_file():
+        return "skipped", f"no {label}"
+    try:
+        content = file_path.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        return "error", f"read failed {label}: {exc}"
+    if not content:
+        return "skipped", f"{label} is empty"
+
+    return backlog_service.upsert_cli_mirror_backlog(project_id, content, dry_run=dry_run)

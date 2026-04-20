@@ -487,6 +487,32 @@ async def create_decision(project_id: int, body: dict = Body(...)) -> dict:
         raise HTTPException(400, str(exc)) from exc
 
 
+# ── Requirements ──────────────────────────────────────────────────────────────
+
+
+@app.get("/api/projects/{project_id}/requirements")
+async def list_project_requirements(project_id: int) -> List[dict]:
+    if project_service.get_project(project_id) is None:
+        raise HTTPException(404, "Project not found")
+    return requirement_service.list_by_project(project_id)
+
+
+@app.post("/api/projects/{project_id}/requirements")
+async def create_requirement(project_id: int, body: dict = Body(...)) -> dict:
+    if project_service.get_project(project_id) is None:
+        raise HTTPException(404, "Project not found")
+    try:
+        return requirement_service.add_requirement(
+            project_id,
+            str(body.get("ref", "")),
+            str(body.get("title", "")),
+            body=body.get("body"),
+            status=str(body.get("status", "draft")),
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
 # ── Memory ────────────────────────────────────────────────────────────────────
 
 
