@@ -17,3 +17,9 @@ Format: **Invariant — Why required — What breaks without it**
 7. **One task → one requirement** — Traceability and scope control — **Untestable bundles; audit failure.**
 
 8. **Architect = validator, not designer of implementation** — Boundaries separate Spec Gate / Operator / Execution — **Tactics leak into PRD; Gate confusion.**
+
+9. **Persistence must succeed or emit is blocked** — Dashboard write is part of emit; a silent failure leaves Spec Gate without the baton — **Spec Gate reads stale or missing blueprint; execution drift.**
+
+10. **project_id required before emit** — All blueprint writes need a resolved project_id — **Write to wrong project or 404 error breaks traceability.**
+
+11. **No duplicate version on PUT** — Version field must be incremented from the last GET — **Data overwrite; version history collapse; Spec Gate reads wrong version.**

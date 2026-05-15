@@ -7,19 +7,32 @@ Claude reads this in multi-agent sessions.
 
 ## Agent Roster and Responsibilities
 
-| Agent | Role | Can Write Files? | Critical? |
-|-------|------|-----------------|-----------|
-| `context` | Fetch docs, read codebase, gather external context | No | No |
-| `research` | Cross-source research, synthesis, recommendations | No | No |
-| `create` | Code generation, file creation, scaffolding | Yes | Yes |
-| `merge` | Combine agent outputs, detect conflicts, produce final artifact | Yes | Yes |
-| `intent_router` | Classify intent, propose agent chain, write tasks | No | No |
-| `planner` | Decompose goals into tasks, write to tasks.json | Yes (tasks.json only) | No |
-| `senior_dev_guide` | Code review, architecture guidance, sequencing | No | No |
-| `workflow_coach` | QA, UX polish, gap detection | No | No |
-| `skill-creator` | Skill authoring, evaluation, optimization | Yes | No |
-| `system_base_manager` | System audits, health checks, drift detection | No | No |
-| `seed-project` | Project seeding via init.sh | Yes | No |
+Fields **`Critical?`** and **`Write/Edit?`** reflect `agents/<name>.json` as of this repo (`critical` defaults to **false** when omitted). **`review_wave`** is the plan in `agents/plans/review_wave.json`.
+
+| Agent | Role (from agent JSON) | Write/Edit in tools_preferred? | Critical? | In `review_wave`? |
+|-------|-------------------------|-------------------------------|-------------|-------------------|
+| `context` | Resolve version-specific API and library behavior before coding. | No | **Yes** | No |
+| `research` | Multi-source technical investigation with cited conclusions. | No | No | No |
+| `create` | Produce reusable skills, prompts, or small automation artifacts. | Yes | No | No |
+| `merge` | Consolidate parallel agent JSON outputs into one merged envelope. | Yes | **Yes** | **Yes** |
+| `intent_router` | Classify intent and propose the right agent chain; does not execute. | No | No | No |
+| `planner` | Decomposes goals into task lists for `~/.claude/tasks.json`. | Yes | No | No |
+| `senior_dev_guide` | Guide sequencing; read project state; prevent drift. | No | No | No |
+| `workflow_coach` | Extract friction into one controlled task; no code changes. | No | No | No |
+| `skill-creator` | Skill lifecycle, evals, benchmarks, description tuning. | Yes | No | No |
+| `system_base_manager` | Audit `~/.claude/` and agent-system-base; health and gaps. | Yes | No | No |
+| `seed-project` | Seed a project via `init.sh`; confirm target dir first. | No (Bash, Read, Glob) | No | No |
+| `devil-advocate` | Challenge solutions; counter-arguments and confidence scoring. | Yes | No | **Yes** |
+| `security-reviewer` | Security pass with PASS / WARN / BLOCK. | Yes | No | **Yes** |
+| `drift-detector` | Compare implementation to spec and decisions. | No | No | **Yes** |
+| `deep-debugger` | Root-cause investigation; minimal fix proposals. | No (includes Bash) | No | No |
+| `streamlit-designer` | Streamlit layout and code generation workflow. | Yes | No | No |
+
+---
+
+## Plan: `review_wave`
+
+Steps (see `agents/plans/review_wave.json`): **devil-advocate**, **security-reviewer**, and **drift-detector** in parallel → **merge** (builtin) → `review_merged.json`. Plan description: mandatory hardening gate; a BLOCK from any agent cancels output and generates fix tasks.
 
 ---
 
@@ -52,13 +65,13 @@ The `tasks_to_create` array is optional. If present, the merge step will write t
 
 ## Tool Permissions by Agent
 
-**Read-only agents** (context, research, intent_router, senior_dev_guide, workflow_coach, system_base_manager):
-- Allowed: Read, Grep, Glob, WebSearch, WebFetch
-- Prohibited: Write, Edit, Bash (destructive commands)
+Use each agent’s **`tools_preferred`** / **`tools_fallback`** in `agents/<name>.json` as the source of truth. The roster table’s **Write/Edit** column flags agents whose preferred tools include **`Write`** or **`Edit`**.
 
-**Write-capable agents** (create, merge, planner, skill-creator, seed-project):
-- Allowed: Read, Write, Edit, Grep, Glob, Bash
-- Must not write outside the declared project path
+**No Write/Edit in preferred tools:** `context`, `research`, `intent_router`, `senior_dev_guide`, `workflow_coach`, `drift-detector`, `deep-debugger`, `seed-project` — several still include **Bash**, **WebSearch**, or **WebFetch**; see JSON.
+
+**Write and/or Edit in preferred tools:** `create`, `merge`, `planner`, `skill-creator`, `system_base_manager`, `devil-advocate`, `security-reviewer`, `streamlit-designer`.
+
+**Policy:** Must not write outside the declared project path unless the agent role explicitly targets global system files (e.g. `system_base_manager` audit outputs under `~/.claude/` per its notes).
 
 ---
 

@@ -1,13 +1,23 @@
 #!/usr/bin/env python3
 """
-Push per-repo Claude artifacts into the task-dashboard SQLite DB and import tasks.
+Push per-repo Claude artifacts into the task-dashboard DB and import tasks.
 
-Writes:
+**Note:** Railway Postgres is now the source of truth. Prefer editing via the
+dashboard / ChatGPT / API, then `agents pull`. Push is for initial seed /
+migration only.
 
-  - .claude/project.md → ``blueprints`` (``project_md``) — **Blueprints** tab
-  - .claude/decisions.md → ``decisions`` (file-mirror upsert) — **Decisions** tab
-  - .claude/sessions.md or .claude/session.md → ``session_logs`` (file-mirror upsert) — **Session Log** tab
-  - .claude/memory/MEMORY.md → ``memory`` key ``mirror/memory/MEMORY.md`` — **Memory** tab
+Writes (new 3-folder layout; falls back to legacy flat layout if files are missing):
+
+  - .claude/pipeline/blueprints.md   (legacy: .claude/project.md)       → **Blueprints**
+  - .claude/governance/decisions.md  (legacy: .claude/decisions.md)     → **Decisions**
+  - .claude/governance/requirements.md (legacy: .claude/requirements.md) → **Requirements** table
+  - .claude/pipeline/session_log.md  (legacy: .claude/session.md)       → **Session Log**
+  - .claude/governance/memory.md     (legacy: .claude/memory/MEMORY.md) → **Memory**
+  - .claude/governance/backlog.md    → sentinel backlog row (CLI mirror)
+  - .claude/specialists/*.md         → ``auxiliary_agent_outputs`` (CLI mirror per role)
+
+Requires ``DATABASE_URL`` to point at Railway Postgres (or local Postgres). Updates
+``.claude/sync_state.json`` (``last_push_at``, ``last_tasks_import_*``) on success.
 
 **Global run (same idea as ``task_worker.py``):** with no ``--slug``, reads
 ``~/agents/agent-services/config/projects_index.json``, processes every **active**
@@ -28,11 +38,15 @@ import argparse
 import json
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 _SERVICES = Path(__file__).resolve().parent.parent / "services"
+_SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(_SERVICES))
+sys.path.insert(0, str(_SCRIPTS))
 
+import agents_cli_config as acfg  # noqa: E402
 import claude_artifact_sync  # noqa: E402
 import project_service  # noqa: E402
 
@@ -102,7 +116,7 @@ def _sync_markdown_for_project(
     *,
     dry_run: bool,
 ) -> int:
-    """Sync project, decisions, session, and ``.claude/memory/MEMORY.md`` into SQLite. Returns 0, or 2 if slug missing."""
+    """Sync project, decisions, requirements, session, and memory into the DB. Returns 0, or 2 if slug missing."""
     row = project_service.get_project_by_slug(slug)
     if row is None:
         print(
@@ -141,29 +155,109 @@ def _sync_markdown_for_project(
         )
         results.append((path.name + " → decisions", kind, msg))
 
+    def _sync_requirements_file(path: Path) -> None:
+        kind, msg = claude_artifact_sync.upsert_requirements_file_from_disk(
+            project_id, path, dry_run=dry_run
+        )
+        results.append((path.name + " → requirements", kind, msg))
+
     def _sync_session_file(path: Path) -> None:
         kind, msg = claude_artifact_sync.upsert_session_file_from_disk(
             project_id, path, dry_run=dry_run
         )
         results.append((path.name + " → session_logs", kind, msg))
 
-    _sync_blueprint(claude_dir / "project.md", PROJECT_MD_TYPE, PROJECT_MD_TITLE)
-    _sync_decisions_file(claude_dir / "decisions.md")
+    def _first_existing(*candidates: Path) -> Path:
+        """Return the first path that exists; else return the first candidate (for error msg)."""
+        for p in candidates:
+            if p.is_file():
+                return p
+        return candidates[0]
 
-    session_file = claude_dir / "sessions.md"
-    if not session_file.is_file():
-        session_file = claude_dir / "session.md"
-    _sync_session_file(session_file)
+    # Blueprints: new .claude/pipeline/blueprints.md, fallback to legacy .claude/project.md
+    _sync_blueprint(
+        _first_existing(claude_dir / "pipeline" / "blueprints.md", claude_dir / "project.md"),
+        PROJECT_MD_TYPE,
+        PROJECT_MD_TITLE,
+    )
 
-    memory_dir = claude_dir / "memory"
-    for label, kind, msg in claude_artifact_sync.sync_claude_memory_folder(
-        project_id, memory_dir, dry_run=dry_run
-    ):
+    # Decisions: new .claude/governance/decisions.md, fallback to legacy .claude/decisions.md
+    _sync_decisions_file(
+        _first_existing(claude_dir / "governance" / "decisions.md", claude_dir / "decisions.md")
+    )
+
+    # Requirements: governance/requirements.md or legacy .claude/requirements.md
+    _sync_requirements_file(
+        _first_existing(
+            claude_dir / "governance" / "requirements.md",
+            claude_dir / "requirements.md",
+        )
+    )
+
+    # Session Log: new .claude/pipeline/session_log.md, fallback to legacy .claude/session(s).md
+    _sync_session_file(
+        _first_existing(
+            claude_dir / "pipeline" / "session_log.md",
+            claude_dir / "sessions.md",
+            claude_dir / "session.md",
+        )
+    )
+
+    # Memory: new .claude/governance/memory.md (single file) or legacy .claude/memory/MEMORY.md folder
+    new_memory = claude_dir / "governance" / "memory.md"
+    if new_memory.is_file():
+        label, kind, msg = claude_artifact_sync.sync_claude_memory_file(
+            project_id, new_memory, dry_run=dry_run
+        )
+        results.append((label, kind, msg))
+    else:
+        memory_dir = claude_dir / "memory"
+        for label, kind, msg in claude_artifact_sync.sync_claude_memory_folder(
+            project_id, memory_dir, dry_run=dry_run
+        ):
+            results.append((label, kind, msg))
+
+    # Backlog (aggregate ``governance/backlog.md`` → sentinel DB row)
+    bk_path = claude_dir / "governance" / "backlog.md"
+    bk_kind, bk_msg = claude_artifact_sync.sync_backlog_cli_mirror_from_disk(
+        project_id, bk_path, dry_run=dry_run
+    )
+    results.append(("backlog.md → backlog", bk_kind, bk_msg))
+
+    # Specialists (7 files → auxiliary_agent_outputs CLI mirror per role)
+    spec_dir = claude_dir / "specialists"
+    for role in claude_artifact_sync.SPECIALIST_ROLES_CLI:
+        sp = spec_dir / f"{role}.md"
+        label, kind, msg = claude_artifact_sync.sync_specialist_file_from_disk(
+            project_id, role, sp, dry_run=dry_run
+        )
         results.append((label, kind, msg))
 
     for name, kind, msg in results:
         print(f"  {name}: [{kind}] {msg}")
+
+    if any(k == "error" for _, k, _ in results):
+        return 3
     return 0
+
+
+def _stamp_utc() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _record_push_sync_state(root: Path, *, dry_run: bool, ok: bool) -> None:
+    if dry_run:
+        return
+    try:
+        acfg.write_sync_state(
+            {
+                "last_push_at": _stamp_utc(),
+                "last_push_ok": ok,
+            },
+            cwd=root,
+        )
+    except OSError:
+        pass
 
 
 def main() -> int:
@@ -214,10 +308,15 @@ def main() -> int:
     for slug, root in targets:
         rc = _sync_markdown_for_project(slug, root, dry_run=args.dry_run)
         exit_code = max(exit_code, rc)
+        if not args.dry_run:
+            _record_push_sync_state(root, dry_run=False, ok=(rc == 0))
 
     if args.no_tasks or args.dry_run:
         if args.dry_run and not args.no_tasks:
-            print("(dry-run: skipping task_worker.py)")
+            print(
+                "(dry-run: would run workers/task_worker.py after artifact sync; "
+                "no DB writes from this script besides previews above)"
+            )
         return exit_code
 
     worker = _resolve_task_worker()
@@ -227,21 +326,33 @@ def main() -> int:
 
     services_root = worker.parent.parent
 
+    task_ok = True
     if args.slug:
         cmd = [sys.executable, str(worker), "--project", args.slug.strip().lower()]
         print("Running:", " ".join(cmd))
         proc = subprocess.run(cmd, cwd=str(services_root))
         exit_code = max(exit_code, int(proc.returncode))
+        task_ok = proc.returncode == 0
         if args.global_tasks:
             cmd_g = [sys.executable, str(worker), "--global-only"]
             print("Running:", " ".join(cmd_g))
             proc_g = subprocess.run(cmd_g, cwd=str(services_root))
             exit_code = max(exit_code, int(proc_g.returncode))
+            task_ok = task_ok and (proc_g.returncode == 0)
     else:
         cmd = [sys.executable, str(worker)]
         print("Running:", " ".join(cmd))
         proc = subprocess.run(cmd, cwd=str(services_root))
         exit_code = max(exit_code, int(proc.returncode))
+        task_ok = proc.returncode == 0
+
+    if not args.dry_run and targets:
+        ts = _stamp_utc()
+        for _, r in targets:
+            acfg.write_sync_state(
+                {"last_tasks_import_at": ts, "last_tasks_import_ok": task_ok},
+                cwd=r,
+            )
 
     return exit_code
 

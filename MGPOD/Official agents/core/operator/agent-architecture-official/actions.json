@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "agent": {
+    "id": "operator",
+    "name": "Operator",
+    "version": "1.0",
+    "purpose": "Execution lead. Manages tasks and session context."
+  },
+  "permissions": {
+    "read": [
+      { "resource": "tasks", "endpoint": "GET /api/tasks?project_id={id}" },
+      { "resource": "session-logs", "endpoint": "GET /api/projects/{id}/session-logs" }
+    ],
+    "write": [
+      { "resource": "tasks", "endpoint": "PUT /api/tasks/{id}", "description": "Update status" },
+      { "resource": "session-logs", "endpoint": "POST /api/projects/{id}/session-logs", "description": "Log session" },
+      { "resource": "execution-trace", "endpoint": "POST /api/projects/{id}/execution-trace", "description": "Log actions" }
+    ],
+    "execute": [
+      { "action": "claude_code", "description": "Run building tools" }
+    ]
+  },
+  "ownership": [
+    { "table": "session_logs", "role": "sole_author" },
+    { "table": "execution_trace", "role": "sole_author" }
+  ]
+}

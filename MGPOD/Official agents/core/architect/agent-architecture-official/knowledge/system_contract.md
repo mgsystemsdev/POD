@@ -4,6 +4,16 @@
 
 **Architect** → `project.md` + `schema.json` → **Execution Spec Gate** → `tasks.json` → **Operator** → **Execution** → **Verification** (evidence vs contract).
 
+## Persistence layer
+
+Architect writes canonical artifacts directly to the POD dashboard via ChatGPT Actions:
+- `project.md` (Section A + B) → blueprint `type: "prd"`
+- `schema.json` → blueprint `type: "schema"`
+- Architecture decisions → `/api/projects/{id}/decisions`
+- Project-scope KV (e.g. `current_prd_blueprint_id`) → `/api/projects/{id}/memory/{key}`
+
+Downstream agents (Spec Gate, Operator) read blueprints from the same store. The `blueprint_id` is the handoff reference — not a file path. See `persistence_contract.md` for call order, version discipline, and error handling.
+
 ## Artifact paths
 
 | Artifact | Path |

@@ -19,6 +19,8 @@ def _row_to_memory(row: Any) -> dict[str, Any]:
         "key": d["key"],
         "value": d["value"],
         "updated_at": d["updated_at"],
+        "created_by": d.get("created_by"),
+        "write_reason": d.get("write_reason"),
     }
 
 
@@ -32,7 +34,14 @@ def _validate_key_value(key: str, value: str) -> tuple[str, str]:
     return k, v
 
 
-def upsert_memory(project_id: int, key: str, value: str) -> dict[str, Any]:
+def upsert_memory(
+    project_id: int,
+    key: str,
+    value: str,
+    *,
+    created_by: str | None = None,
+    write_reason: str | None = None,
+) -> dict[str, Any]:
     """Insert or replace the row for (project_id, key); ``updated_at`` is always set to now."""
     if not project_service.project_exists(project_id):
         raise ValueError(f"unknown project_id: {project_id}")
@@ -41,12 +50,15 @@ def upsert_memory(project_id: int, key: str, value: str) -> dict[str, Any]:
     with db.connect() as conn:
         conn.execute(
             """
-            INSERT INTO memory (project_id, key, value, updated_at) VALUES (?, ?, ?, ?)
+            INSERT INTO memory (project_id, key, value, updated_at, created_by, write_reason)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(project_id, key) DO UPDATE SET
               value = excluded.value,
-              updated_at = excluded.updated_at
+              updated_at = excluded.updated_at,
+              created_by = excluded.created_by,
+              write_reason = excluded.write_reason
             """,
-            (project_id, k, v, now),
+            (project_id, k, v, now, created_by, write_reason),
         )
         conn.commit()
         row = conn.execute(

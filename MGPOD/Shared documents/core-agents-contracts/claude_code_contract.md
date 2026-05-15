@@ -181,3 +181,26 @@ ses- prefix entries go to `~/.claude/tasks.json` only. TASK-001 prefix entries a
 
 **SR-CC-6 WIP = 1.**  
 One task in progress at all times. Never starts a new task until the current task is committed, merged, and marked done in the dashboard.
+
+---
+
+## WHAT TO EXPECT FROM ARCHITECT (Handoff Format)
+
+When Architect emits, downstream agents receive:
+
+| Artifact | Description |
+|----------|-------------|
+| Section A | Full PRD — role, architecture, constraints, requirements |
+| Section B | 10 sections, fixed order, exact headings (per system_contract.md) |
+| schema.json | JSON object matching Section A — regenerated from final Section A |
+| blueprint_id | Confirmed integer ID from dashboard API |
+| version | Integer — incremented from prior blueprint |
+
+**Do not assume:**
+- Section A and Section B are in sync — if Section A changed, regenerate Section B before reading Section B
+- A task can proceed without its `requirement_ref` tracing to Section A
+- A PUT blueprint is safe without first GETting the current version number
+
+**Return path:**
+- Section B structure wrong → write to Approvals tab: "Section B REJECTED: missing/wrong section [X]"
+- Requirement contract invalid → write to Validations tab + request Architect fix

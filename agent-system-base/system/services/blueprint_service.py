@@ -20,6 +20,10 @@ def _row_to_blueprint(row: Any) -> dict[str, Any]:
         "title": d["title"],
         "content": d["content"],
         "version": d["version"],
+        "created_by": d.get("created_by"),
+        "correlation_id": d.get("correlation_id"),
+        "write_reason": d.get("write_reason"),
+        "source_proposal_ref": d.get("source_proposal_ref"),
         "created_at": d["created_at"],
         "updated_at": d["updated_at"],
     }
@@ -32,6 +36,10 @@ def create(
     content: str,
     *,
     version: int = 1,
+    created_by: str | None = None,
+    correlation_id: str | None = None,
+    write_reason: str | None = None,
+    source_proposal_ref: str | None = None,
 ) -> dict[str, Any]:
     if not project_service.project_exists(project_id):
         raise ValueError(f"unknown project_id: {project_id}")
@@ -48,10 +56,18 @@ def create(
     with db.connect() as conn:
         cur = conn.execute(
             """
-            INSERT INTO blueprints (project_id, type, title, content, version, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id
+            INSERT INTO blueprints (
+                project_id, type, title, content, version,
+                created_by, correlation_id, write_reason, source_proposal_ref,
+                created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
             """,
-            (project_id, t, ti, c, int(version), now, now),
+            (
+                project_id, t, ti, c, int(version),
+                created_by, correlation_id, write_reason, source_proposal_ref,
+                now, now
+            ),
         )
         bid = cur.lastrowid
         conn.commit()

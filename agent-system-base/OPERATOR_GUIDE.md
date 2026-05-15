@@ -40,7 +40,7 @@ bash ~/agents/agent-system-base/init.sh /path/to/active-project
    - **Not** the string `path/to/active-project` literally.
 
 2. **Copies global tooling → `~/.claude/`**  
-   - Orchestrator package, agents, schemas, etc.
+   - **`orchestrator/`**, **`agents/`**, and **`schemas/`** from `agent-system-base` (not the `system/` tree — that goes to `agent-services` in step 3).
 
 3. **Copies runtime → `~/agents/agent-services/`**  
    - `workers/`, `system/` (dashboard, services, DB migrations), `config/`.

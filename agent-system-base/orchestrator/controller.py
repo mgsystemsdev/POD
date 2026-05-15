@@ -8,7 +8,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-from orchestrator.context_builder import build_context_payload, build_prior_summaries, write_context_file
+from orchestrator.context_builder import (
+    build_context_payload,
+    build_prior_summaries,
+    write_context_file,
+)
 from orchestrator.merge import merge_agent_outputs
 from orchestrator.models import (
     SCHEMA_VERSION,
@@ -476,7 +480,6 @@ class Orchestrator:
     ) -> None:
         from_run = step.get("inputs", {}).get("from_run", [])
         merge_step_id = step["step_id"]
-        retries = 0
 
         def attempt() -> None:
             merge_agent_outputs(
@@ -491,7 +494,6 @@ class Orchestrator:
         try:
             attempt()
         except Exception as e1:
-            retries = 1
             state["errors"].append({"step_id": merge_step_id, "attempt": 1, "error": str(e1)})
             try:
                 attempt()

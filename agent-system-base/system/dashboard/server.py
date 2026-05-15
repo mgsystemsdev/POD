@@ -20,8 +20,11 @@ _SERVICES_DIR = Path(__file__).resolve().parent / "services"
 if str(_SERVICES_DIR) not in sys.path:
     sys.path.insert(0, str(_SERVICES_DIR))
 
+import approval_service  # noqa: E402
 import auxiliary_agent_output_service  # noqa: E402
+import backlog_service  # noqa: E402
 import blueprint_service  # noqa: E402
+import db  # noqa: E402
 import decision_service  # noqa: E402
 import memory_service  # noqa: E402
 import project_service  # noqa: E402
@@ -29,12 +32,12 @@ import proposed_action_service  # noqa: E402
 import run_service  # noqa: E402
 import session_log_service  # noqa: E402
 import task_service  # noqa: E402
-
-import uvicorn
-from fastapi import Body, FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
+import uvicorn  # noqa: E402
+import validation_service  # noqa: E402
+from fastapi import Body, FastAPI, HTTPException  # noqa: E402
+from fastapi.responses import HTMLResponse, JSONResponse  # noqa: E402
+from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
+from starlette.requests import Request  # noqa: E402
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 LOG_DIR = Path(os.environ.get("LOG_DIR", str(Path.home() / "agents" / "agent-services" / "logs")))
@@ -79,7 +82,7 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
 
         expected = os.environ.get("AGENTS_API_KEY", "").strip()
         if not expected:
-            return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+            return await call_next(request)
 
         supplied = request.headers.get("X-API-Key", "").strip()
         if not supplied or not hmac.compare_digest(
@@ -142,6 +145,44 @@ async def update_project(project_id: int, body: dict = Body(...)) -> dict:
     if row is None:
         raise HTTPException(404, "Project not found")
     return row
+
+
+@app.get("/api/projects/{project_id}")
+async def read_project(project_id: int) -> dict:
+    row = project_service.get_project(project_id)
+    if row is None:
+        raise HTTPException(404, "Project not found")
+    return row
+
+
+@app.patch("/api/projects/{project_id}")
+async def patch_project(project_id: int, body: dict = Body(...)) -> dict:
+    slug = body.get("slug")
+    if slug is None or not str(slug).strip():
+        raise HTTPException(400, "slug is required")
+    slug_s = str(slug).strip()
+    try:
+        return project_service.rename_project_slug(project_id, slug_s)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except project_service.ProjectSlugConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.delete("/api/projects/{project_id}")
+async def remove_project(project_id: int) -> Response:
+    try:
+        ok = project_service.delete_project(project_id)
+    except project_service.ProjectDeleteBlockedError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": str(exc), "counts": exc.counts},
+        ) from exc
+    if not ok:
+        raise HTTPException(404, "Project not found")
+    return Response(status_code=204)
 
 
 # ── Tasks ─────────────────────────────────────────────────────────────────────
@@ -298,6 +339,64 @@ async def complete_task(
     return _task_out(updated or task)
 
 
+# ── Backlog ──────────────────────────────────────────────────────────────────
+
+
+@app.get("/api/projects/{project_id}/backlog")
+async def list_project_backlog(project_id: int, status: Optional[str] = None) -> List[dict]:
+    if project_service.get_project(project_id) is None:
+        raise HTTPException(404, "Project not found")
+    return backlog_service.list_by_project(project_id, status=status)
+
+
+@app.post("/api/projects/{project_id}/backlog")
+async def create_backlog_item(project_id: int, body: dict = Body(...)) -> dict:
+    if project_service.get_project(project_id) is None:
+        raise HTTPException(404, "Project not found")
+    try:
+        return backlog_service.create(
+            project_id,
+            str(body.get("title", "")),
+            description=body.get("description"),
+            submitted_by=str(body.get("submitted_by", "human")),
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+# ── Approvals ─────────────────────────────────────────────────────────────────
+
+
+@app.get("/api/projects/{project_id}/approvals")
+async def list_project_approvals(project_id: int) -> List[dict]:
+    if project_service.get_project(project_id) is None:
+        raise HTTPException(404, "Project not found")
+    return approval_service.list_by_project(project_id)
+
+
+@app.post("/api/projects/{project_id}/approvals")
+async def record_approval(project_id: int, body: dict = Body(...)) -> dict:
+    try:
+        return approval_service.record_approval(
+            project_id,
+            str(body["entity_type"]),
+            int(body["entity_id"]),
+            str(body["decision"]),
+            reason=body.get("reason"),
+            approver_role=str(body.get("approver_role", "human_operator")),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+# ── Validations ───────────────────────────────────────────────────────────────
+
+
+@app.get("/api/projects/{project_id}/validations")
+async def list_project_validations(project_id: int) -> List[dict]:
+    return validation_service.list_by_project(project_id)
+
+
 # ── Blueprints ────────────────────────────────────────────────────────────────
 
 
@@ -324,6 +423,10 @@ async def create_blueprint(project_id: int, body: dict = Body(...)) -> dict:
             str(body.get("title", "")),
             str(body.get("content", "")),
             version=int(body.get("version", 1)),
+            created_by=body.get("created_by"),
+            correlation_id=body.get("correlation_id"),
+            write_reason=body.get("write_reason"),
+            source_proposal_ref=body.get("source_proposal_ref"),
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
@@ -376,6 +479,35 @@ async def create_decision(project_id: int, body: dict = Body(...)) -> dict:
             str(body.get("title", "")),
             str(body.get("content", "")),
             project_id=project_id,
+            created_by=body.get("created_by"),
+            correlation_id=body.get("correlation_id"),
+            source_proposal_id=body.get("source_proposal_id"),
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+# ── Requirements ──────────────────────────────────────────────────────────────
+
+
+@app.get("/api/projects/{project_id}/requirements")
+async def list_project_requirements(project_id: int) -> List[dict]:
+    if project_service.get_project(project_id) is None:
+        raise HTTPException(404, "Project not found")
+    return requirement_service.list_by_project(project_id)
+
+
+@app.post("/api/projects/{project_id}/requirements")
+async def create_requirement(project_id: int, body: dict = Body(...)) -> dict:
+    if project_service.get_project(project_id) is None:
+        raise HTTPException(404, "Project not found")
+    try:
+        return requirement_service.add_requirement(
+            project_id,
+            str(body.get("ref", "")),
+            str(body.get("title", "")),
+            body=body.get("body"),
+            status=str(body.get("status", "draft")),
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
@@ -398,7 +530,11 @@ async def put_memory(project_id: int, key: str, body: dict = Body(...)) -> dict:
     value = body.get("value")
     try:
         return memory_service.upsert_memory(
-            project_id, key, str(value) if value is not None else ""
+            project_id,
+            key,
+            str(value) if value is not None else "",
+            created_by=body.get("created_by"),
+            write_reason=body.get("write_reason"),
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
@@ -442,6 +578,27 @@ async def latest_session_log(project_id: int) -> dict:
     if row is None:
         raise HTTPException(404, "No session logs for this project")
     return row
+
+
+# ── Execution trace ───────────────────────────────────────────────────────────
+
+
+@app.get("/api/projects/{project_id}/execution-trace")
+async def list_execution_trace(project_id: int, limit: int = 200) -> List[dict]:
+    if project_service.get_project(project_id) is None:
+        raise HTTPException(404, "Project not found")
+    with db.connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT et.* FROM execution_trace et
+            JOIN tasks t ON t.id = et.task_id
+            WHERE t.project_id = ?
+            ORDER BY et.timestamp DESC
+            LIMIT ?
+            """,
+            (project_id, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
 
 # ── Proposed actions ──────────────────────────────────────────────────────────

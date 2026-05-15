@@ -216,7 +216,6 @@ class TestRunService(unittest.TestCase):
         r = run_service.create_run(self._task_id, mode="manual")
         run_service.update_run(r["id"], "pending_input", input_prompt="prompt")
 
-        task_before = run_service.complete_manual_run.__module__  # just trigger import
         task, run = run_service.complete_manual_run(r["id"], "my output")
 
         self.assertEqual(task["status"], "done")

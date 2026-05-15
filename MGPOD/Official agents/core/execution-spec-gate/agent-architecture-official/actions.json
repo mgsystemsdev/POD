@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "agent": {
+    "id": "spec-gate",
+    "name": "Execution Spec Gate",
+    "version": "1.0",
+    "purpose": "Quality control layer. Validates requirements into tasks."
+  },
+  "permissions": {
+    "read": [
+      { "resource": "blueprints", "endpoint": "GET /api/projects/{id}/blueprints" },
+      { "resource": "requirements", "endpoint": "GET /api/projects/{id}/requirements" }
+    ],
+    "write": [
+      { "resource": "tasks", "endpoint": "POST /api/tasks", "description": "Create work units" },
+      { "resource": "validations", "endpoint": "POST /api/projects/{id}/validations", "description": "Record check" }
+    ]
+  },
+  "ownership": [
+    { "table": "tasks", "role": "creator" },
+    { "table": "validations", "role": "sole_author" }
+  ]
+}

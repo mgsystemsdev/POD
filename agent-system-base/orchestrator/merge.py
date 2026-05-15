@@ -15,7 +15,6 @@ from orchestrator.models import (
     validate_merged_output,
 )
 
-
 SIMILARITY_THRESHOLD = 0.3
 MIN_OUTPUT_LEN_FOR_DIVERGENCE = 80
 
@@ -38,7 +37,6 @@ def _similarity(a: str, b: str) -> float:
 
 def detect_conflicts(pieces: list[dict[str, Any]]) -> list[dict[str, Any]]:
     conflicts: list[dict[str, Any]] = []
-    agents = [p["agent"] for p in pieces]
 
     # Rule 1: artifact collision
     path_to_agents: dict[str, list[str]] = defaultdict(list)

@@ -1,0 +1,10 @@
+# Ruff config for agent-system-base (no pyproject.toml in this tree).
+# Scripts/tests that insert services/ onto sys.path before local imports need E402 ignored.
+
+[lint.per-file-ignores]
+"system/scripts/agents_open.py" = ["E402"]
+"system/scripts/agents_project_link.py" = ["E402"]
+"system/scripts/agents_status.py" = ["E402"]
+"system/scripts/check_db_status.py" = ["E402"]
+"system/scripts/sync_project_state.py" = ["E402"]
+"system/services/test_claude_prompts.py" = ["E402"]

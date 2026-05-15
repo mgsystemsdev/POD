@@ -3,6 +3,7 @@ Mirror on-disk Claude project files into SQLite for the task dashboard.
 
 - ``project.md`` → ``blueprints`` (type ``project_md``) — **Blueprints** tab
 - ``decisions.md`` → ``decisions`` (file-mirror upsert) — **Decisions** tab
+- ``requirements.md`` → ``requirements`` table (``## REQ-...`` sections) — **Requirements** tab
 - ``session.md`` / ``sessions.md`` → ``session_logs`` (file-mirror upsert) — **Session Log** tab
 - ``.claude/memory/MEMORY.md`` → one ``memory`` row (key ``mirror/memory/MEMORY.md``) — **Memory** tab
 
@@ -19,6 +20,17 @@ MEMORY_DASHBOARD_FILE = "MEMORY.md"
 
 # Removed from decisions/session tables; delete if still present in memory
 LEGACY_MEMORY_KEYS = frozenset({"mirror_claude_decisions_md", "mirror_claude_session_md"})
+
+# Specialist tab filenames under ``.claude/specialists/`` (must match pull script).
+SPECIALIST_ROLES_CLI = (
+    "strategist",
+    "system_design",
+    "backend_spec",
+    "db_spec",
+    "schema_spec",
+    "ui_spec",
+    "senior_dev",
+)
 
 
 def upsert_file_blueprint_from_disk(
@@ -102,6 +114,36 @@ def upsert_decisions_file_from_disk(
         return "error", f"{type(exc).__name__}: {exc}"
 
 
+def upsert_requirements_file_from_disk(
+    project_id: int,
+    file_path: Path,
+    *,
+    dry_run: bool,
+) -> tuple[str, str]:
+    """Parse ``.claude/requirements.md`` (``## REQ-...``) into the ``requirements`` table."""
+    import requirement_service  # noqa: PLC0415
+
+    label = str(file_path)
+    if not file_path.is_file():
+        return "skipped", f"no {label}"
+    try:
+        content = file_path.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        return "error", f"read failed {label}: {exc}"
+
+    try:
+        parsed = requirement_service.parse_requirements_markdown(content)
+        if dry_run:
+            return (
+                "dry-run",
+                f"would sync requirements ({len(parsed)} section(s)) ← {label}",
+            )
+        kind, msg = requirement_service.replace_from_disk(project_id, content)
+        return kind, msg
+    except Exception as exc:
+        return "error", f"{type(exc).__name__}: {exc}"
+
+
 def upsert_session_file_from_disk(
     project_id: int,
     file_path: Path,
@@ -131,6 +173,52 @@ def upsert_session_file_from_disk(
         return ("updated" if existing else "created"), f"session log tab ← {label}"
     except Exception as exc:
         return "error", f"{type(exc).__name__}: {exc}"
+
+
+def sync_claude_memory_file(
+    project_id: int,
+    file_path: Path,
+    *,
+    dry_run: bool,
+) -> tuple[str, str, str]:
+    """
+    Sync the new single-file memory layout: ``.claude/governance/memory.md`` →
+    one ``memory`` row (key ``mirror/memory/MEMORY.md``). Also prunes any other
+    ``mirror/memory/*`` rows and legacy ``mirror_claude_*`` keys.
+
+    Returns ``(label, kind, msg)``.
+    """
+    import memory_service  # noqa: PLC0415
+
+    label = f"memory.md → {MEMORY_FOLDER_SYNC_PREFIX}{MEMORY_DASHBOARD_FILE}"
+
+    if not file_path.is_file():
+        return (label, "skipped", f"no {file_path}")
+    try:
+        content = file_path.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        return (label, "error", f"read failed: {exc}")
+    if not content:
+        return (label, "skipped", f"{file_path} is empty")
+
+    if dry_run:
+        return (
+            label,
+            "dry-run",
+            f"would set {MEMORY_FOLDER_SYNC_PREFIX}{MEMORY_DASHBOARD_FILE} ({len(content)} chars)",
+        )
+
+    # Clean up legacy keys + any stale mirror/memory/* rows (same invariant as folder sync)
+    for lk in LEGACY_MEMORY_KEYS:
+        memory_service.delete_memory(project_id, lk)
+    memory_service.delete_keys_with_prefix(project_id, MEMORY_FOLDER_SYNC_PREFIX)
+
+    key = f"{MEMORY_FOLDER_SYNC_PREFIX}{MEMORY_DASHBOARD_FILE}"
+    try:
+        memory_service.upsert_memory(project_id, key, content)
+        return (label, "updated", f"memory tab ← {key!r}")
+    except Exception as exc:
+        return (label, "error", f"{type(exc).__name__}: {exc}")
 
 
 def sync_claude_memory_folder(
@@ -218,3 +306,51 @@ def sync_claude_memory_folder(
         out.append((label, "error", f"{type(exc).__name__}: {exc}"))
 
     return out
+
+
+def sync_specialist_file_from_disk(
+    project_id: int,
+    agent_role: str,
+    file_path: Path,
+    *,
+    dry_run: bool,
+) -> tuple[str, str, str]:
+    """Push ``.claude/specialists/{role}.md`` → ``auxiliary_agent_outputs`` (CLI mirror)."""
+    import auxiliary_agent_output_service  # noqa: PLC0415
+
+    label = f"specialists/{agent_role}.md"
+    if not file_path.is_file():
+        return (label, "skipped", f"no {file_path}")
+    try:
+        content = file_path.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        return (label, "error", f"read failed: {exc}")
+    if not content:
+        return (label, "skipped", f"{file_path} is empty")
+
+    kind, msg = auxiliary_agent_output_service.upsert_cli_mirror_output(
+        project_id, agent_role, content, dry_run=dry_run
+    )
+    return (label, kind, msg)
+
+
+def sync_backlog_cli_mirror_from_disk(
+    project_id: int,
+    file_path: Path,
+    *,
+    dry_run: bool,
+) -> tuple[str, str]:
+    """Push ``.claude/governance/backlog.md`` → sentinel backlog row."""
+    import backlog_service  # noqa: PLC0415
+
+    label = str(file_path)
+    if not file_path.is_file():
+        return "skipped", f"no {label}"
+    try:
+        content = file_path.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        return "error", f"read failed {label}: {exc}"
+    if not content:
+        return "skipped", f"{label} is empty"
+
+    return backlog_service.upsert_cli_mirror_backlog(project_id, content, dry_run=dry_run)
