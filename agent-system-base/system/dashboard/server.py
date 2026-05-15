@@ -40,6 +40,7 @@ from fastapi.responses import HTMLResponse, JSONResponse  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 from starlette.requests import Request  # noqa: E402
 from starlette.responses import Response  # noqa: E402
+from starlette.staticfiles import StaticFiles  # noqa: E402
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 LOG_DIR = Path(os.environ.get("LOG_DIR", str(Path.home() / "agents" / "agent-services" / "logs")))
