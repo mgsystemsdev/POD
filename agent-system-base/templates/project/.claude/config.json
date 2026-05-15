@@ -1,0 +1,6 @@
+{
+  "project_id": null,
+  "api_url": "https://REPLACE-WITH-YOUR-RAILWAY-APP.up.railway.app",
+  "api_key": null,
+  "_notes": "Set api_url to your Railway app URL (or use AGENTS_API_URL). Run `agents add` to set project_id. api_key matches AGENTS_API_KEY on Railway if auth is enabled."
+}

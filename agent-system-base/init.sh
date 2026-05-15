@@ -36,78 +36,49 @@ mkdir -p "$TARGET/runs/ephemeral"
 mkdir -p "$TARGET/.claude/skills/swarm"
 cp "$BASE_DIR/.claude/skills/swarm/SKILL.md" "$TARGET/.claude/skills/swarm/SKILL.md"
 
-# --- Standard .claude/ document structure ---
+# --- Standard .claude/ document structure (copied from templates/project/.claude/) ---
 echo "Seeding .claude/ document structure for $TARGET..."
 
-if [ ! -f "$TARGET/.claude/project.md" ]; then
-  cat > "$TARGET/.claude/project.md" << 'PROJECTMD'
-# Project Name — Blueprint
-
-## Overview
-
-
-## Problem
-
-
-## Stack
-- Language: Python
-- Framework: FastAPI
-- Database: SQLite (raw SQL, no ORM)
-
-## Architecture
-
-
-## Critical Constraints
-
-
-## Current State
-Greenfield.
-
-## Next Scope
-
-PROJECTMD
-  echo "  Created .claude/project.md"
+TEMPLATES="$BASE_DIR/templates/project/.claude"
+if [ ! -d "$TEMPLATES" ]; then
+  echo "error: templates directory missing: $TEMPLATES" >&2
+  exit 1
 fi
 
-if [ ! -f "$TARGET/.claude/tasks.json" ]; then
-  echo "[]" > "$TARGET/.claude/tasks.json"
-  echo "  Created .claude/tasks.json"
-fi
+# Copy every template file, but never overwrite existing files in the target.
+# Structure: pipeline/, governance/, specialists/, config.json
+mkdir -p "$TARGET/.claude/pipeline" "$TARGET/.claude/governance" "$TARGET/.claude/specialists"
 
-if [ ! -f "$TARGET/.claude/session.md" ]; then
-  cat > "$TARGET/.claude/session.md" << 'SESSIONMD'
-# Session Log
+copy_template() {
+  local rel="$1"
+  local src="$TEMPLATES/$rel"
+  local dest="$TARGET/.claude/$rel"
+  if [ ! -f "$src" ]; then
+    echo "  [skip] template missing: $rel" >&2
+    return 0
+  fi
+  if [ -f "$dest" ]; then
+    return 0  # never overwrite
+  fi
+  mkdir -p "$(dirname "$dest")"
+  cp "$src" "$dest"
+  echo "  Created .claude/$rel"
+}
 
----
-SESSIONMD
-  echo "  Created .claude/session.md"
-fi
-
-if [ ! -f "$TARGET/.claude/decisions.md" ]; then
-  cat > "$TARGET/.claude/decisions.md" << 'DECISIONSMD'
-# Decisions Log
-
----
-DECISIONSMD
-  echo "  Created .claude/decisions.md"
-fi
-
-if [ ! -f "$TARGET/.claude/requirements.md" ]; then
-  cat > "$TARGET/.claude/requirements.md" << 'REQMD'
-# Requirements
-
-Use one section per requirement. The dashboard **Requirements** tab and `agents push` sync rows from this file.
-
-## REQ-001 Example requirement title
-
-Status: draft
-
-Describe acceptance criteria and scope here. Link tasks with `requirement_ref` matching this id (e.g. REQ-001).
-
----
-REQMD
-  echo "  Created .claude/requirements.md"
-fi
+copy_template "config.json"
+copy_template "pipeline/tasks.json"
+copy_template "pipeline/blueprints.md"
+copy_template "pipeline/session_log.md"
+copy_template "pipeline/execution_trace.md"
+copy_template "governance/decisions.md"
+copy_template "governance/requirements.md"
+copy_template "governance/memory.md"
+copy_template "governance/approvals.md"
+copy_template "governance/backlog.md"
+copy_template "governance/audit_trail.md"
+for role in strategist system_design backend_spec db_spec schema_spec ui_spec senior_dev; do
+  copy_template "specialists/$role.md"
+done
 
 # 3b. Seed project context files (copy templates, don't overwrite existing)
 if [ ! -f "$TARGET/CLAUDE.md" ]; then
@@ -131,7 +102,7 @@ echo "  ~/.claude/          (orchestrator + agents + schemas + system — global
 echo "  ~/agents/agent-services/   (workers synced — runtime layer)"
 echo "  runs/               (per-project run outputs)"
 echo "  .claude/skills/swarm/SKILL.md"
-echo "  .claude/{project.md,tasks.json,session.md,decisions.md,requirements.md}"
+echo "  .claude/{config.json,pipeline/,governance/,specialists/}  (from templates/project/.claude/)"
 echo ""
 echo "To run the orchestrator:"
 echo "  cd ~/.claude && python3 -m orchestrator --runs-dir $TARGET/runs/ephemeral --plan swarm_research --goal 'test' --mode simulate"

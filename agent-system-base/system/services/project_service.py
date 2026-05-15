@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import sqlite3
 from datetime import datetime, timezone
@@ -35,6 +36,17 @@ class ProjectDeleteBlockedError(Exception):
 
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
 
+# Tech stack composer domains (must match dashboard catalog DOMAIN_ORDER).
+TECH_STACK_DOMAINS: tuple[str, ...] = (
+    "AWS",
+    "FastAPI",
+    "Frontend UI",
+    "Database",
+    "Data Analytics",
+    "Software Dev",
+)
+_MAX_TECH_STACK_BYTES = 512_000
+
 
 def _iso_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
@@ -52,6 +64,28 @@ def _validate_slug(slug: str) -> None:
         )
 
 
+def _parse_tech_stack_column(raw: Any) -> dict[str, Any] | None:
+    if raw is None or raw == "":
+        return None
+    if isinstance(raw, (bytes, bytearray)):
+        raw = raw.decode("utf-8", errors="replace")
+    if isinstance(raw, dict):
+        blob = raw
+    else:
+        try:
+            blob = json.loads(str(raw))
+        except (TypeError, ValueError):
+            return None
+    if not isinstance(blob, dict):
+        return None
+    if "selections" not in blob:
+        return None
+    sel = blob.get("selections")
+    if not isinstance(sel, dict):
+        return None
+    return blob
+
+
 def _row_to_project(row: Any) -> dict[str, Any]:
     d = dict(row)
     return {
@@ -61,7 +95,64 @@ def _row_to_project(row: Any) -> dict[str, Any]:
         "root_path": d.get("root_path"),
         "created_at": d["created_at"],
         "updated_at": d["updated_at"],
+        "tech_stack": _parse_tech_stack_column(d.get("tech_stack")),
     }
+
+
+def validate_tech_stack_selections(body: dict[str, Any]) -> dict[str, dict[str, list[str]]]:
+    """Validate API payload ``{ selections: { Domain: { Category: [items] } } }``."""
+    if not isinstance(body, dict):
+        raise ValueError("body must be an object")
+    sel = body.get("selections")
+    if not isinstance(sel, dict):
+        raise ValueError("selections must be an object")
+    out: dict[str, dict[str, list[str]]] = {}
+    for domain, cats in sel.items():
+        if domain not in TECH_STACK_DOMAINS:
+            raise ValueError(f"unknown domain: {domain!r}")
+        if not isinstance(cats, dict):
+            raise ValueError(f"domain {domain!r}: categories must be an object")
+        out_dom: dict[str, list[str]] = {}
+        for cat, items in cats.items():
+            if not isinstance(cat, str) or not cat.strip():
+                raise ValueError("category names must be non-empty strings")
+            if not isinstance(items, list):
+                raise ValueError(f"domain {domain!r} category {cat!r}: items must be a list")
+            cleaned: list[str] = []
+            for it in items:
+                if not isinstance(it, str):
+                    continue
+                s = it.strip()
+                if not s:
+                    continue
+                if len(s) > 240:
+                    raise ValueError("item label too long (max 240 chars)")
+                cleaned.append(s)
+            if cleaned:
+                out_dom[cat.strip()] = cleaned
+        if out_dom:
+            out[domain] = out_dom
+    return out
+
+
+def set_project_tech_stack(project_id: int, payload: dict[str, Any]) -> dict[str, Any] | None:
+    """Replace ``projects.tech_stack`` JSON. Returns updated project or None if missing."""
+    if get_project(project_id) is None:
+        return None
+    validated = validate_tech_stack_selections(payload)
+    doc = {"selections": validated}
+    raw = json.dumps(doc, ensure_ascii=False)
+    if len(raw.encode("utf-8")) > _MAX_TECH_STACK_BYTES:
+        raise ValueError("tech_stack payload too large")
+    now = _iso_now()
+    with db.connect() as conn:
+        conn.execute(
+            "UPDATE projects SET tech_stack = ?, updated_at = ? WHERE id = ?",
+            (raw, now, project_id),
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+        return _row_to_project(row) if row else None
 
 
 def project_exists(project_id: int) -> bool:
@@ -109,13 +200,16 @@ def create_project(
                 """,
                 (name.strip(), slug, root_path, now, now),
             )
+            ins = cur.fetchone()
+            if ins is None:
+                raise RuntimeError("INSERT returned no row")
+            pid = int(ins["id"])
         except _IntegrityErrors as exc:
             if "slug" in str(exc).lower():
                 raise ProjectSlugConflictError(
                     "A project with this slug already exists"
                 ) from exc
             raise
-        pid = cur.lastrowid
         conn.commit()
         row = conn.execute("SELECT * FROM projects WHERE id = ?", (pid,)).fetchone()
         assert row is not None

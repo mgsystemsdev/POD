@@ -34,15 +34,19 @@ import session_log_service  # noqa: E402
 import task_service  # noqa: E402
 import uvicorn  # noqa: E402
 import validation_service  # noqa: E402
+import requirement_service  # noqa: E402
 from fastapi import Body, FastAPI, HTTPException  # noqa: E402
 from fastapi.responses import HTMLResponse, JSONResponse  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 from starlette.requests import Request  # noqa: E402
+from starlette.responses import Response  # noqa: E402
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 LOG_DIR = Path(os.environ.get("LOG_DIR", str(Path.home() / "agents" / "agent-services" / "logs")))
 LOG_FILE = LOG_DIR / "dashboard.log"
 HTML_FILE = Path(__file__).resolve().parent / "index.html"
+TECH_STACK_PAGE = Path(__file__).resolve().parent / "tech-stack.html"
+DASH_ASSETS = Path(__file__).resolve().parent / "assets"
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -97,10 +101,24 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
 app = FastAPI(title="Task Dashboard", docs_url=None, redoc_url=None)
 app.add_middleware(APIKeyMiddleware)
 
+if DASH_ASSETS.is_dir():
+    app.mount(
+        "/dashboard-assets",
+        StaticFiles(directory=str(DASH_ASSETS)),
+        name="dashboard_assets",
+    )
+
 
 @app.get("/", response_class=HTMLResponse)
 async def index() -> str:
     return HTML_FILE.read_text(encoding="utf-8")
+
+
+@app.get("/tech-stack", response_class=HTMLResponse)
+async def tech_stack_page() -> str:
+    if not TECH_STACK_PAGE.is_file():
+        raise HTTPException(404, "tech-stack page missing")
+    return TECH_STACK_PAGE.read_text(encoding="utf-8")
 
 
 # ── Projects ──────────────────────────────────────────────────────────────────
@@ -150,6 +168,17 @@ async def update_project(project_id: int, body: dict = Body(...)) -> dict:
 @app.get("/api/projects/{project_id}")
 async def read_project(project_id: int) -> dict:
     row = project_service.get_project(project_id)
+    if row is None:
+        raise HTTPException(404, "Project not found")
+    return row
+
+
+@app.put("/api/projects/{project_id}/tech-stack")
+async def put_project_tech_stack(project_id: int, body: dict = Body(...)) -> dict:
+    try:
+        row = project_service.set_project_tech_stack(project_id, body)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     if row is None:
         raise HTTPException(404, "Project not found")
     return row

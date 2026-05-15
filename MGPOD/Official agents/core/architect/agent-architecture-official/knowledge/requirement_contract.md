@@ -4,15 +4,20 @@
 
 A **requirement** is a **testable contract**. If success and failure cannot be **observed**, it is not a requirement — it does not enter Section A.
 
-## Five elements (all mandatory)
+## Required fields (all mandatory)
 
-| Element | Must specify |
-|--------|----------------|
+| Field | Must specify |
+|-------|----------------|
+| **Type** | SR, FR, or FX — see [requirement_types.md](requirement_types.md). No contract is valid without a type. |
+| **Subtype** | Optional: DATA, API, UI, INFRA, AGENT. Add when it increases precision. |
+| **Status** | Initial value: DRAFT. See [lifecycle.md](lifecycle.md) for transitions. |
 | **Trigger** | Event, action, or condition that starts behavior (user action, API, cron, webhook, DB state, etc.). |
 | **Input** | Data: fields, types, valid ranges/enums; **invalid** cases and expected rejection. |
 | **Output** | Observable result: returned/stored/sent; format; **how a third party verifies success**. |
 | **Constraints** | Limits: time, volume, dependencies, forbidden patterns, ordering — **checkable**. |
 | **Failure path** | On error: retries (count, interval), persisted state, user-visible effect, blast radius. |
+
+**FX additional requirement:** `parent_requirement_id` — ID of the requirement whose execution produced this failure. Mandatory for all FX. Missing → **BLOCK**.
 
 ## Phrasing rules
 
@@ -21,6 +26,29 @@ A **requirement** is a **testable contract**. If success and failure cannot be *
 3. **Failure path** — No “log and continue” without **where**, **what**, and **effect**.
 4. **Constraints** — Numbers or explicit caps; unknown → **ASK**, not “reasonable performance.”
 5. **Trigger** — Missing trigger → requirement has no entry point → **BLOCK** until defined.
+
+## Structured contract schema
+
+Every requirement Architect emits must produce both a human-readable block and this JSON:
+
+```json
+{
+  "requirement_id": "REQ-###",
+  "type": "SR | FR | FX",
+  "subtype": "DATA | API | UI | INFRA | AGENT | null",
+  "status": "DRAFT",
+  "trigger": {},
+  "input": {},
+  "output": {},
+  "constraints": [],
+  "failure_path": {},
+  "done_when": [],
+  "parent_requirement_id": "REQ-### or null",
+  "dependencies": []
+}
+```
+
+`parent_requirement_id` is null for SR and FR. It is **mandatory and non-null** for every FX.
 
 ## Done when (per REQ)
 

@@ -36,11 +36,29 @@ Failure → **BLOCK** that REQ; **ASK** one question (highest-impact gap).
 - Unknown fact → **ASK** / **GUIDE**, or assumption **verbatim** + explicit user **Y/N** before PRD.
 - **Never** add facts because they “usually” apply.
 
+## Type and lifecycle blocking conditions
+
+**BLOCK** immediately (before contract validation) if:
+
+| Condition | Block reason |
+|-----------|-------------|
+| Type (SR/FR/FX) not assigned | Untyped requirement — invalid |
+| FX missing `parent_requirement_id` | FX without failure trace — invalid |
+| FR conflicts with existing SR | Authority violation — state conflict, require resolution |
+| FX scope adds new feature or architecture | FX attempted scope creep — split required |
+| State skip detected (e.g., DRAFT → PROMOTED) | Lifecycle violation |
+| Backlog write attempted without APPROVED status | Write-trigger violation |
+
+See [requirement_types.md](requirement_types.md) and [lifecycle.md](lifecycle.md) for full rules.
+
 ## Blocking conditions (output gate)
 
 **Do not** emit `project.md` + `schema.json` if:
 
 - Any in-scope REQ fails contract validation
+- Any REQ missing type field
+- Any FX missing `parent_requirement_id`
+- Any FR/FX conflicts with SR (unresolved)
 - Any conflict unresolved
 - Section B missing any of **ten** sections or wrong order/headings ([system_contract.md](system_contract.md))
 - `schema.json` out of sync with Section A data model (when model exists)

@@ -31,6 +31,10 @@
     --aux:    #ed4245;
     --aux-bg: rgba(237,66,69,.1);
     --aux-bd: rgba(237,66,69,.35);
+    /* Tech stack lane */
+    --stack:    #14b8a6;
+    --stack-bg: rgba(20,184,166,.1);
+    --stack-bd: rgba(20,184,166,.35);
 
     --p1: #ef4444; --p1-bg: #2d1515;
     --p2: #f97316; --p2-bg: #2d1e10;
@@ -160,6 +164,7 @@
   .tab-row-label.pipeline-lbl { color: #7289da; }
   .tab-row-label.gov-lbl      { color: #c8871a; }
   .tab-row-label.aux-lbl      { color: #c03538; }
+  .tab-row-label.stack-lbl    { color: #2dd4bf; }
 
   .tab-btn {
     padding: 5px 12px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface2);
@@ -185,6 +190,20 @@
     background: var(--aux-bg); border-color: var(--aux-bd); color: #f87171;
   }
   .tab-btn.tab-auxiliary:hover { border-color: var(--aux); }
+
+  .tab-btn.tab-stack.active {
+    background: var(--stack-bg); border-color: var(--stack-bd); color: #5eead4;
+  }
+  .tab-btn.tab-stack:hover { border-color: var(--stack); }
+
+  .stack-read-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .stack-read-cat { margin-bottom: 10px; background: #0C1019; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .stack-read-cat h4 { font-size: 12px; font-weight: 600; color: #CBD5E1; margin-bottom: 8px; }
+  .stack-chip-row { display: flex; flex-wrap: wrap; gap: 4px; }
+  .stack-chip {
+    padding: 5px 10px; border-radius: 6px; border: 1px solid #161B2B; background: #0F1320;
+    font-size: 11px; color: #8896AB; font-weight: 500;
+  }
 
   .tab-panel.hidden { display: none !important; }
   .tab-panel-inner { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-height: 120px; }
@@ -294,6 +313,7 @@
   .admin-proj-table tr:last-child td { border-bottom: none; }
   .admin-proj-table code { font-size: 11px; }
   .proj-admin-actions { white-space: nowrap; }
+  .sidebar-admin-body { display: flex; flex-direction: column; gap: 6px; }
   .sidebar-admin-body .btn { width: 100%; justify-content: center; }
   .field       { margin-bottom: 16px; }
   .field label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
@@ -354,6 +374,7 @@
       <div class="sidebar-section-label">Admin</div>
       <div class="sidebar-admin-body" id="sidebarAdmin">
         <button type="button" class="btn btn-sm" onclick="openProjectAdmin()">Projects…</button>
+        <a class="btn btn-sm" href="/tech-stack" style="text-align:center;text-decoration:none;display:block">Tech stack</a>
       </div>
     </div>
   </aside>
@@ -441,6 +462,11 @@
       <button type="button" class="tab-btn tab-auxiliary" data-tab="aux-schema-spec"   onclick="switchTab('aux-schema-spec')">Schema Spec</button>
       <button type="button" class="tab-btn tab-auxiliary" data-tab="aux-ui-spec"       onclick="switchTab('aux-ui-spec')">UI Spec</button>
       <button type="button" class="tab-btn tab-auxiliary" data-tab="aux-senior-dev"    onclick="switchTab('aux-senior-dev')">Senior Dev</button>
+    </div>
+    <!-- Row 4: Tech Stack (only when a project with saved stack is selected) -->
+    <div class="tab-row hidden" id="techStackRow">
+      <span class="tab-row-label stack-lbl">Tech Stack</span>
+      <div id="techStackPills" style="display:flex;gap:4px;flex-wrap:wrap;align-items:center"></div>
     </div>
   </div>
 
@@ -656,6 +682,16 @@
   <div id="tab-aux-ui-spec"       class="tab-panel hidden"><div class="tab-panel-inner"><strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">UI Spec</strong><div id="aux-list-ui-spec"></div></div></div>
   <div id="tab-aux-senior-dev"    class="tab-panel hidden"><div class="tab-panel-inner"><strong style="font-size:14px;color:var(--text);display:block;margin-bottom:12px;">Senior Dev</strong><div id="aux-list-senior-dev"></div></div></div>
 
+  <div id="tab-tech-stack" class="tab-panel hidden">
+    <div class="tab-panel-inner stack-read-wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+        <strong style="font-size:14px;color:var(--text);">Tech stack</strong>
+        <a class="btn btn-sm" id="techStackEditLink" href="/tech-stack" style="text-decoration:none;">Edit in composer</a>
+      </div>
+      <div id="techStackReadRoot"></div>
+    </div>
+  </div>
+
   </div>
   </div>
 </div>
@@ -766,6 +802,7 @@ let projectFilter = 'all';
 let sortKey       = 'priority';
 let sortAsc       = true;
 let activeTab     = 'tasks';
+let techStackDomainFilter = null;
 
 const PRI_LABELS   = { 1:'Critical', 2:'High', 3:'Medium', 4:'Low', 5:'Backlog' };
 const STATUS_LABEL = { pending:'Pending', in_progress:'In Progress', done:'Completed', blocked:'Blocked', failed:'Failed' };
@@ -789,7 +826,18 @@ const ALL_TABS = [
   'decisions','requirements','memory','approvals','backlog','audit-trail',
   'aux-strategist','aux-system-design','aux-backend-spec',
   'aux-db-spec','aux-schema-spec','aux-ui-spec','aux-senior-dev',
+  'tech-stack',
 ];
+
+const TECH_STACK_DOMAIN_ORDER = ['AWS', 'FastAPI', 'Frontend UI', 'Database', 'Data Analytics', 'Software Dev'];
+const TS_META = {
+  'AWS': { icon: '☁️', accent: '#FF9900' },
+  'FastAPI': { icon: '⚡', accent: '#009688' },
+  'Frontend UI': { icon: '🎨', accent: '#E91E63' },
+  'Database': { icon: '🗄️', accent: '#2196F3' },
+  'Data Analytics': { icon: '📊', accent: '#9C27B0' },
+  'Software Dev': { icon: '🛠️', accent: '#4CAF50' },
+};
 
 const AUX_ROLE_MAP = {
   'aux-strategist':    'strategist',
@@ -1000,6 +1048,7 @@ async function loadTasks() {
     renderProjectStrip();
     updateStats();
     renderTasks();
+    updateTechStackChrome();
     document.getElementById('refreshLabel').textContent = 'Updated ' + new Date().toLocaleTimeString();
   } catch(e) {
     toast('Failed to load tasks: ' + e.message, 'err');
@@ -1088,17 +1137,21 @@ function updateStats() {
 
 // ── Filters & Sort ────────────────────────────────────────────────────────────
 function setProjectFilter(proj) {
+  techStackDomainFilter = null;
   projectFilter = proj;
   renderProjectStrip();
   updateStats();
   renderTasks();
+  updateTechStackChrome();
   loadTabData(activeTab);
 }
 
 function switchTab(tabName) {
   activeTab = tabName;
   document.querySelectorAll('.tab-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.tab === tabName);
+    if (b.dataset.tab) {
+      b.classList.toggle('active', b.dataset.tab === tabName);
+    }
   });
   ALL_TABS.forEach(t => {
     const el = document.getElementById('tab-' + t);
@@ -1123,7 +1176,7 @@ async function loadTabData(tab) {
 
   const needsProject = [
     'blueprints','session','execution-trace','decisions','requirements','memory',
-    'approvals','backlog',
+    'approvals','backlog','tech-stack',
     ...Object.keys(AUX_LIST_MAP),
   ];
 
@@ -1136,6 +1189,7 @@ async function loadTabData(tab) {
     if (tab === 'memory')          _placeholderProjectRequired('memoryList');
     if (tab === 'approvals')       _placeholderProjectRequired('approvalList');
     if (tab === 'backlog')         _placeholderProjectRequired('backlogList');
+    if (tab === 'tech-stack')      _placeholderProjectRequired('techStackReadRoot');
     if (AUX_LIST_MAP[tab])         _placeholderProjectRequired(AUX_LIST_MAP[tab]);
     return;
   }
@@ -1149,6 +1203,7 @@ async function loadTabData(tab) {
     if (tab === 'memory')          await loadMemory(pid);
     if (tab === 'approvals')       await loadApprovals(pid);
     if (tab === 'backlog')         await loadBacklog(pid);
+    if (tab === 'tech-stack')       loadTechStackReadonly(pid);
     if (AUX_ROLE_MAP[tab])         await loadAuxiliarySpecialist(pid, AUX_ROLE_MAP[tab], AUX_LIST_MAP[tab]);
   } catch (e) {
     toast('Tab load failed: ' + e.message, 'err');
@@ -1514,6 +1569,90 @@ function renderTasks() {
 
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escAttr(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+function techStackDomainsWithData(pid) {
+  const p = projectMap[pid];
+  if (!p || !p.tech_stack || !p.tech_stack.selections) return [];
+  const sel = p.tech_stack.selections;
+  return TECH_STACK_DOMAIN_ORDER.filter(function(d) {
+    const block = sel[d];
+    if (!block || typeof block !== 'object') return false;
+    return Object.keys(block).some(function(c) {
+      const arr = block[c];
+      return Array.isArray(arr) && arr.length;
+    });
+  });
+}
+
+function updateTechStackChrome() {
+  const row = document.getElementById('techStackRow');
+  const host = document.getElementById('techStackPills');
+  if (!row || !host) return;
+  if (projectFilter === 'all' || projectFilter == null) {
+    row.classList.add('hidden');
+    return;
+  }
+  const doms = techStackDomainsWithData(projectFilter);
+  if (!doms.length) {
+    row.classList.add('hidden');
+    return;
+  }
+  row.classList.remove('hidden');
+  let html = '<button type="button" class="tab-btn tab-stack' + (techStackDomainFilter === null ? ' active' : '') + '" data-ts-domain="">All</button>';
+  doms.forEach(function(d) {
+    const active = techStackDomainFilter === d ? ' active' : '';
+    html += '<button type="button" class="tab-btn tab-stack' + active + '" data-ts-domain="' + escAttr(d) + '">' + esc(d) + '</button>';
+  });
+  host.innerHTML = html;
+  host.onclick = function(ev) {
+    const b = ev.target.closest('button[data-ts-domain]');
+    if (!b) return;
+    const v = b.getAttribute('data-ts-domain');
+    techStackDomainFilter = v === '' ? null : v;
+    updateTechStackChrome();
+    switchTab('tech-stack');
+  };
+}
+
+function loadTechStackReadonly(projectId) {
+  const el = document.getElementById('techStackReadRoot');
+  const link = document.getElementById('techStackEditLink');
+  if (link) link.href = '/tech-stack?project=' + encodeURIComponent(String(projectId));
+  if (!el) return;
+  if (!projectId) {
+    el.innerHTML = '<p style="color:var(--muted)">Select a project in the sidebar.</p>';
+    return;
+  }
+  const p = projectMap[projectId];
+  if (!p || !p.tech_stack || !p.tech_stack.selections || !Object.keys(p.tech_stack.selections).length) {
+    el.innerHTML = '<p style="color:var(--muted)">No tech stack saved yet. <a href="/tech-stack?project=' + encodeURIComponent(String(projectId)) + '" style="color:var(--accent-h)">Open composer</a></p>';
+    return;
+  }
+  const sel = p.tech_stack.selections;
+  const domains = techStackDomainFilter ? [techStackDomainFilter] : techStackDomainsWithData(projectId);
+  let html = '';
+  domains.forEach(function(dN) {
+    const meta = TS_META[dN] || { icon: '•', accent: '#64748b' };
+    const cats = sel[dN];
+    if (!cats) return;
+    html += '<div style="margin-bottom:14px"><div style="font-size:13px;font-weight:700;color:' + esc(meta.accent) + ';margin-bottom:8px">' + esc(meta.icon + ' ' + dN) + '</div>';
+    Object.keys(cats).forEach(function(cat) {
+      const items = cats[cat];
+      if (!items || !items.length) return;
+      html += '<div class="stack-read-cat"><h4>' + esc(cat) + '</h4><div class="stack-chip-row">';
+      items.forEach(function(item) {
+        html += '<span class="stack-chip">' + esc(item) + '</span>';
+      });
+      html += '</div></div>';
+    });
+    html += '</div>';
+  });
+  el.innerHTML = html || '<p style="color:var(--muted)">Nothing to show for this filter.</p>';
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────────

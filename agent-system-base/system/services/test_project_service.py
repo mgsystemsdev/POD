@@ -85,6 +85,31 @@ class TestProjectService(unittest.TestCase):
         self.assertEqual(b["name"], "Two")
         self.assertEqual(b["root_path"], "/tmp/b")
 
+    def test_tech_stack_bad_domain(self) -> None:
+        slug = f"bd_{uuid.uuid4().hex[:10]}"
+        p = project_service.create_project("B", slug)
+        with self.assertRaises(ValueError):
+            project_service.set_project_tech_stack(
+                p["id"], {"selections": {"NotADomain": {"Cat": ["x"]}}}
+            )
+
+    def test_tech_stack_roundtrip(self) -> None:
+        slug = f"ts_{uuid.uuid4().hex[:10]}"
+        p = project_service.create_project("TS", slug)
+        self.assertIsNone(p.get("tech_stack"))
+        payload = {
+            "selections": {
+                "AWS": {"Compute": ["AWS Lambda"], "Storage": ["Amazon S3"]},
+            }
+        }
+        updated = project_service.set_project_tech_stack(p["id"], payload)
+        assert updated is not None
+        self.assertIsNotNone(updated.get("tech_stack"))
+        self.assertEqual(updated["tech_stack"]["selections"]["AWS"]["Compute"], ["AWS Lambda"])
+        again = project_service.get_project(p["id"])
+        assert again is not None
+        self.assertEqual(again["tech_stack"]["selections"]["AWS"]["Storage"], ["Amazon S3"])
+
 
 if __name__ == "__main__":
     unittest.main()
