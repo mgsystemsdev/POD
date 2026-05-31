@@ -7,6 +7,10 @@
 | Path | Contents |
 |------|----------|
 | `Official agents/core/<role>/` | Pipeline agents: Architect, Execution Spec Gate, Operator, Strategist (auxiliary), Blueprint Creator, etc. |
+| `Official agents/core/loop/` | Loop GPT — plumbing (GitHub, deps, env, Docker, Railway, CI/CD) |
+| `Official agents/core/security/` | Security GPT — auth design (hold-the-trigger) |
+| `Official agents/core/infra/` | Infra GPT — Terraform + AWS (strictest hold-the-trigger) |
+| `Official agents/core/sidekick/` | Sidekick GPT — hands-on help when Miguel is doing the work (no coding agent) |
 | `Official agents/core/<role>/agent-architecture-official/` | `prompt/` + `knowledge/` — active system prompt and knowledge tree |
 | `Official agents/auxiliary/<role>/` | Specialist advisors (senior_dev, database_specialist, …) — same `agent-architecture-official/` layout |
 
